@@ -4,6 +4,8 @@ This is a simple tool to help you decide which player to bet on in this year's T
 
 ## Usage
 
+(Assumes sqlite3 is installed)
+
 1. Clone the repository
 2. Create virtual env., install the requirements with `pip install -r requirements.txt`
 3. (If `matches.db` doesn't exist) Run `python3 insert.py` to create the database
