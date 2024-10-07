@@ -3,10 +3,9 @@ import requests
 from db_utils import insert_match_data, create_db, insert_hero_data
 
 
-def get_all_ti_matches():
-    ti_league_id = "16935"
+def get_all_ti_matches(league_id):
     return requests.get(
-        f"https://api.opendota.com/api/leagues/{ti_league_id}/matches"
+        f"https://api.opendota.com/api/leagues/{league_id}/matches"
     ).json()
 
 
@@ -32,8 +31,30 @@ def get_play_lh_at_5mins(match):
         print(match)  # Prints most likely error
         print("No players in match")
         return
+
+    radiant_lane_1_players = []
+    radiant_lane_2_players = []
+    radiant_lane_3_players = []
+    dire_lane_1_players = []
+    dire_lane_2_players = []
+    dire_lane_3_players = []
     for player in match["players"]:
-        player_name = player["name"] if "name" in player else player["personaname"]
+        # Populate the lane lists
+        if player["lane"] == 1 and player["isRadiant"]:
+            radiant_lane_1_players.append(player)
+        elif player["lane"] == 2 and player["isRadiant"]:
+            radiant_lane_2_players.append(player)
+        elif player["lane"] == 3 and player["isRadiant"]:
+            radiant_lane_3_players.append(player)
+        elif player["lane"] == 1 and not player["isRadiant"]:
+            dire_lane_1_players.append(player)
+        elif player["lane"] == 2 and not player["isRadiant"]:
+            dire_lane_2_players.append(player)
+        elif player["lane"] == 3 and not player["isRadiant"]:
+            dire_lane_3_players.append(player)
+
+    for player in match["players"]:
+        player_name = player["name"] if player["name"] else player["personaname"]
         fallback_name = player_name if player_name else "Saksa, or someone else idk"
         hero_id = player["hero_id"]
         kills = player["hero_kills"]
@@ -42,11 +63,24 @@ def get_play_lh_at_5mins(match):
             continue
         last_hits_at_5 = player["lh_t"][5]
 
+        current_lane = player["lane"]
+        is_radiant = player["isRadiant"]
+        heroes_on_lane = [
+            player["hero_id"]
+            for player in match["players"]
+            if player["lane"] == current_lane and player["isRadiant"] != is_radiant
+        ]
+
         print(f"At 5 mins, {fallback_name} got {last_hits_at_5} last hits")
 
         # Insert data into SQLite database
         insert_match_data(
-            match["match_id"], fallback_name, hero_id, kills, last_hits_at_5
+            match["match_id"],
+            fallback_name,
+            hero_id,
+            kills,
+            last_hits_at_5,
+            heroes_on_lane,
         )
 
 
@@ -56,7 +90,9 @@ create_db()
 # Insert hero data into hero_info table
 insert_heroes()
 
-for match in get_all_ti_matches():
+ti_league_id = "16935"
+wallachia_league_id = "17119"
+for match in get_all_ti_matches(wallachia_league_id):
     print(match["match_id"])
     match_info = get_match(match["match_id"])
     get_play_lh_at_5mins(match_info)

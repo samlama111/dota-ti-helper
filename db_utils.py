@@ -12,6 +12,7 @@ def create_db():
         hero_name TEXT,
         kills INTEGER,
         last_hits_at_5 INTEGER,
+        heroes_on_lane TEXT,
         PRIMARY KEY (match_id, player_name)
     )
     """)
@@ -39,20 +40,38 @@ def insert_hero_data(hero_id, hero_name):
     conn.close()
 
 
-def insert_match_data(match_id, player_name, hero_id, kills, last_hits_at_5):
+def insert_match_data(
+    match_id, player_name, hero_id, kills, last_hits_at_5, heroes_on_lane
+):
     conn = sqlite3.connect("matches.db")
     cursor = conn.cursor()
     # Get hero_name from hero_info table
     cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,))
-    hero_name = cursor.fetchone()[0]
-    if hero_name is None:
+    current_hero_name = cursor.fetchone()[0]
+    if current_hero_name is None:
         raise ValueError(f"Hero with id {hero_id} not found")
+
+    # Get hero_name from hero_info table
+    lane_heroes = []
+    for hero in heroes_on_lane:
+        cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero,))
+        lane_heroes.append(cursor.fetchone()[0])
+    heroes_on_lane_str = ", ".join(lane_heroes)
+    print(f"Heroes on lane: {heroes_on_lane_str}")
+
     cursor.execute(
         """
-    INSERT OR REPLACE INTO match_info (match_id, player_name, hero_name, kills, last_hits_at_5)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO match_info (match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane)
+    VALUES (?, ?, ?, ?, ?, ?)
     """,
-        (match_id, player_name, hero_name, kills, last_hits_at_5),
+        (
+            match_id,
+            player_name,
+            current_hero_name,
+            kills,
+            last_hits_at_5,
+            heroes_on_lane_str,
+        ),
     )
     conn.commit()
     conn.close()
