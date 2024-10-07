@@ -1,6 +1,6 @@
 import time
 import requests
-from db_utils import create_db, insert_match_data
+from db_utils import insert_match_data, create_db, insert_hero_data
 
 
 def get_all_ti_matches():
@@ -12,6 +12,19 @@ def get_all_ti_matches():
 
 def get_match(match_id):
     return requests.get(f"https://api.opendota.com/api/matches/{match_id}?").json()
+
+
+def get_hero_stats():
+    return requests.get("https://api.opendota.com/api/heroStats").json()
+
+
+def insert_heroes():
+    hero_dict = get_hero_stats()
+    hero_ids = [hero["id"] for hero in hero_dict]
+    hero_names = [hero["localized_name"] for hero in hero_dict]
+    # Insert into hero_info table
+    for hero_id, hero_name in zip(hero_ids, hero_names):
+        insert_hero_data(hero_id, hero_name)
 
 
 def get_play_lh_at_5mins(match):
@@ -39,6 +52,9 @@ def get_play_lh_at_5mins(match):
 
 # Create the database and table
 create_db()
+
+# Insert hero data into hero_info table
+insert_heroes()
 
 for match in get_all_ti_matches():
     print(match["match_id"])

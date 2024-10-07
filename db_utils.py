@@ -9,12 +9,32 @@ def create_db():
     CREATE TABLE IF NOT EXISTS match_info (
         match_id INTEGER,
         player_name TEXT,
-        hero_id INTEGER,
+        hero_name TEXT,
         kills INTEGER,
         last_hits_at_5 INTEGER,
         PRIMARY KEY (match_id, player_name)
     )
     """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS hero_info (
+        hero_id INTEGER PRIMARY KEY,
+        hero_name TEXT
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def insert_hero_data(hero_id, hero_name):
+    conn = sqlite3.connect("matches.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+    INSERT OR REPLACE INTO hero_info (hero_id, hero_name)
+    VALUES (?, ?)
+    """,
+        (hero_id, hero_name),
+    )
     conn.commit()
     conn.close()
 
@@ -22,12 +42,17 @@ def create_db():
 def insert_match_data(match_id, player_name, hero_id, kills, last_hits_at_5):
     conn = sqlite3.connect("matches.db")
     cursor = conn.cursor()
+    # Get hero_name from hero_info table
+    cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,))
+    hero_name = cursor.fetchone()[0]
+    if hero_name is None:
+        raise ValueError(f"Hero with id {hero_id} not found")
     cursor.execute(
         """
-    INSERT OR REPLACE INTO match_info (match_id, player_name, hero_id, kills, last_hits_at_5)
+    INSERT OR REPLACE INTO match_info (match_id, player_name, hero_name, kills, last_hits_at_5)
     VALUES (?, ?, ?, ?, ?)
     """,
-        (match_id, player_name, hero_id, kills, last_hits_at_5),
+        (match_id, player_name, hero_name, kills, last_hits_at_5),
     )
     conn.commit()
     conn.close()
