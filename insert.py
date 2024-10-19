@@ -26,7 +26,7 @@ def insert_heroes():
         insert_hero_data(hero_id, hero_name)
 
 
-def get_play_lh_at_5mins(match):
+def get_play_lh_at_5mins(match, tournament_id):
     if "players" not in match:
         print(match)  # Prints most likely error
         print("No players in match")
@@ -75,6 +75,7 @@ def get_play_lh_at_5mins(match):
 
         # Insert data into SQLite database
         insert_match_data(
+            tournament_id,
             match["match_id"],
             fallback_name,
             hero_id,
@@ -92,9 +93,13 @@ insert_heroes()
 
 ti_league_id = "16935"
 wallachia_league_id = "17119"
-for match in get_all_ti_matches(wallachia_league_id):
+bb_dacha_belgrade_league_id = "17126"
+
+current_league_id = bb_dacha_belgrade_league_id
+
+for match in get_all_ti_matches(current_league_id):
     print(match["match_id"])
     match_info = get_match(match["match_id"])
-    get_play_lh_at_5mins(match_info)
+    get_play_lh_at_5mins(match_info, current_league_id)
     # Time out for 5s, to avoid getting rate limited
     time.sleep(5)

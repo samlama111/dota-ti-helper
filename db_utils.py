@@ -7,6 +7,7 @@ def create_db():
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS match_info (
+        tournament_id INTEGER,
         match_id INTEGER,
         player_name TEXT,
         hero_name TEXT,
@@ -41,7 +42,8 @@ def insert_hero_data(hero_id, hero_name):
 
 
 def insert_match_data(
-    match_id, player_name, hero_id, kills, last_hits_at_5, heroes_on_lane
+    tournament_id, match_id, player_name, hero_id, kills, last_hits_at_5,
+    heroes_on_lane,
 ):
     conn = sqlite3.connect("matches.db")
     cursor = conn.cursor()
@@ -61,10 +63,11 @@ def insert_match_data(
 
     cursor.execute(
         """
-    INSERT OR REPLACE INTO match_info (match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
         (
+            tournament_id,
             match_id,
             player_name,
             current_hero_name,
