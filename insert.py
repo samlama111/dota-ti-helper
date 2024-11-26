@@ -94,8 +94,10 @@ insert_heroes()
 ti_league_id = "16935"
 wallachia_league_id = "17119"
 bb_dacha_belgrade_league_id = "17126"
+dreamleague_season_24 = "17272"
+blast_slam_1 = "17414"
 
-current_league_id = bb_dacha_belgrade_league_id
+current_league_id = blast_slam_1
 
 for match in get_all_ti_matches(current_league_id):
     print(match["match_id"])
