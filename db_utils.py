@@ -1,9 +1,10 @@
 import sqlite3
 import numpy as np
 
+file_path = "esl_one_bangkok_2024.db"
 
 def create_db():
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect(file_path)
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS match_info (
@@ -28,7 +29,7 @@ def create_db():
 
 
 def insert_hero_data(hero_id, hero_name):
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect(file_path)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -45,7 +46,7 @@ def insert_match_data(
     tournament_id, match_id, player_name, hero_id, kills, last_hits_at_5,
     heroes_on_lane,
 ):
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect(file_path)
     cursor = conn.cursor()
     # Get hero_name from hero_info table
     cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,))
@@ -81,7 +82,7 @@ def insert_match_data(
 
 
 def get_avg_and_median_lh_based_player_prefix(prefix, hero_id=None):
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect(file_path)
     cursor = conn.cursor()
     if hero_id is not None:
         cursor.execute(
@@ -116,7 +117,7 @@ def get_avg_and_median_lh_based_player_prefix(prefix, hero_id=None):
 
 
 def get_avg_and_median_kills_based_player_prefix(prefix, hero_id=None):
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect(file_path)
     cursor = conn.cursor()
     if hero_id is not None:
         cursor.execute(
@@ -151,7 +152,7 @@ def get_avg_and_median_kills_based_player_prefix(prefix, hero_id=None):
 
 
 def get_all_players():
-    conn = sqlite3.connect("matches.db")
+    conn = sqlite3.connect(file_path)
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT player_name FROM match_info")
     results = cursor.fetchall()
