@@ -1,32 +1,18 @@
 import time
-import requests
-from db_utils import insert_match_data, create_db, insert_hero_data
+from db_utils import DB
+from opendota_api import get_all_league_matches, get_hero_stats, get_match
 
 
-def get_all_ti_matches(league_id):
-    return requests.get(
-        f"https://api.opendota.com/api/leagues/{league_id}/matches"
-    ).json()
-
-
-def get_match(match_id):
-    return requests.get(f"https://api.opendota.com/api/matches/{match_id}?").json()
-
-
-def get_hero_stats():
-    return requests.get("https://api.opendota.com/api/heroStats").json()
-
-
-def insert_heroes():
+def insert_heroes(db):
     hero_dict = get_hero_stats()
     hero_ids = [hero["id"] for hero in hero_dict]
     hero_names = [hero["localized_name"] for hero in hero_dict]
     # Insert into hero_info table
     for hero_id, hero_name in zip(hero_ids, hero_names):
-        insert_hero_data(hero_id, hero_name)
+        db.insert_hero_data(hero_id, hero_name)
 
 
-def get_play_lh_at_5mins(match, tournament_id):
+def get_play_lh_at_5mins(db, match, tournament_id):
     if "players" not in match:
         print(match)  # Prints most likely error
         print("No players in match")
@@ -74,7 +60,7 @@ def get_play_lh_at_5mins(match, tournament_id):
         print(f"At 5 mins, {fallback_name} got {last_hits_at_5} last hits")
 
         # Insert data into SQLite database
-        insert_match_data(
+        db.insert_match_data(
             tournament_id,
             match["match_id"],
             fallback_name,
@@ -84,25 +70,34 @@ def get_play_lh_at_5mins(match, tournament_id):
             heroes_on_lane,
         )
 
+file_path = "fissure_playground_1_2025.db"
 
-# Create the database and table
-create_db()
+db = DB(file_path)
+try:
+    # Create the database and table
+    db.create_db()
+    # Insert hero data into hero_info table
+    insert_heroes(db)
 
-# Insert hero data into hero_info table
-insert_heroes()
+    ti_league_id = "16935"
+    wallachia_league_id = "17119"
+    bb_dacha_belgrade_league_id = "17126"
+    dreamleague_season_24 = "17272"
+    blast_slam_1 = "17414"
+    esl_one_bangkok_2024 = "17509"
+    fissure_playground_1_2025 = "17588"
 
-ti_league_id = "16935"
-wallachia_league_id = "17119"
-bb_dacha_belgrade_league_id = "17126"
-dreamleague_season_24 = "17272"
-blast_slam_1 = "17414"
-esl_one_bangkok_2024 = "17509"
+    current_league_id = fissure_playground_1_2025
 
-current_league_id = esl_one_bangkok_2024
-
-for match in get_all_ti_matches(current_league_id):
-    print(match["match_id"])
-    match_info = get_match(match["match_id"])
-    get_play_lh_at_5mins(match_info, current_league_id)
-    # Time out for 5s, to avoid getting rate limited
-    time.sleep(5)
+    for match in get_all_league_matches(current_league_id):
+        print(match["match_id"])
+        # if match["match_id"] == 8080862140:
+        #    continue
+        match_info = get_match(match["match_id"])
+        get_play_lh_at_5mins(db, match_info, current_league_id)
+        # Time out for 5s, to avoid getting rate limited
+        time.sleep(5)
+except Exception as e:
+    print(e)
+finally:
+    db.close()
