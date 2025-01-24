@@ -2,8 +2,6 @@ import sqlite3
 import numpy as np
 
 # TODO: New attributes
-# - team name/id
-# - patch
 
 class DB:
     def __init__(self, file_path):
@@ -27,6 +25,7 @@ class DB:
             last_hits_at_5 INTEGER,
             heroes_on_lane TEXT,
             enemy_heroes_on_lane TEXT,
+            team_id INTEGER,
             PRIMARY KEY (match_id, player_name)
         )
         """)
@@ -40,7 +39,14 @@ class DB:
         CREATE TABLE IF NOT EXISTS league_info (
             league_id INTEGER PRIMARY KEY,
             league_name TEXT,
-            tier TEXT
+            tier TEXT,
+            patch_id INTEGER
+        )
+        """)
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS team_info (
+            team_id INTEGER PRIMARY KEY,
+            team_name TEXT
         )
         """)
         self.conn.commit()
@@ -55,13 +61,23 @@ class DB:
         )
         self.conn.commit()
     
-    def insert_league_data(self, league_id, league_name, tier):
+    def insert_team_data(self, team_id, team_name):
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO league_info (league_id, league_name, tier)
-        VALUES (?, ?, ?)
+        INSERT OR REPLACE INTO team_info (team_id, team_name)
+        VALUES (?, ?)
         """,
-            (league_id, league_name, tier),
+            (team_id, team_name),
+        )
+        self.conn.commit()
+    
+    def insert_league_data(self, league_id, league_name, tier, patch_id):
+        self.cursor.execute(
+            """
+        INSERT OR REPLACE INTO league_info (league_id, league_name, tier, patch_id)
+        VALUES (?, ?, ?, ?)
+        """,
+            (league_id, league_name, tier, patch_id),
         )
         self.conn.commit()
 
@@ -75,6 +91,7 @@ class DB:
         last_hits_at_5,
         heroes_on_lane,
         enemy_heroes_on_lane,
+        team_id
     ):
         # Get hero_name from hero_info table
         self.cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,))
@@ -98,8 +115,8 @@ class DB:
 
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, team_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 tournament_id,
@@ -110,6 +127,7 @@ class DB:
                 last_hits_at_5,
                 heroes_on_lane_str,
                 enemy_heroes_on_lane_str,
+                team_id
             ),
         )
         self.conn.commit()
