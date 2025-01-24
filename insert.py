@@ -54,6 +54,11 @@ def get_play_lh_at_5mins(db, match, tournament_id):
         heroes_on_lane = [
             player["hero_id"]
             for player in match["players"]
+            if player["lane"] == current_lane and player["isRadiant"] == is_radiant # and player["hero_id"] != hero_id
+        ]
+        enemy_heroes_on_lane = [
+            player["hero_id"]
+            for player in match["players"]
             if player["lane"] == current_lane and player["isRadiant"] != is_radiant
         ]
 
@@ -68,6 +73,7 @@ def get_play_lh_at_5mins(db, match, tournament_id):
             kills,
             last_hits_at_5,
             heroes_on_lane,
+            enemy_heroes_on_lane,
         )
 
 file_path = "fissure_playground_1_2025.db"

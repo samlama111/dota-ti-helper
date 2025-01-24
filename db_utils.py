@@ -26,6 +26,7 @@ class DB:
             kills INTEGER,
             last_hits_at_5 INTEGER,
             heroes_on_lane TEXT,
+            enemy_heroes_on_lane TEXT,
             PRIMARY KEY (match_id, player_name)
         )
         """)
@@ -56,6 +57,7 @@ class DB:
         kills,
         last_hits_at_5,
         heroes_on_lane,
+        enemy_heroes_on_lane,
     ):
         # Get hero_name from hero_info table
         self.cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,))
@@ -70,10 +72,17 @@ class DB:
         heroes_on_lane_str = ", ".join(lane_heroes)
         print(f"Heroes on lane: {heroes_on_lane_str}")
 
+        enemy_lane_heroes = []
+        for hero in enemy_heroes_on_lane:
+            self.cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero,))
+            enemy_lane_heroes.append(self.cursor.fetchone()[0])
+        enemy_heroes_on_lane_str = ", ".join(enemy_lane_heroes)
+        print(f"Enemy heroes on lane: {enemy_heroes_on_lane_str}")
+
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 tournament_id,
@@ -83,6 +92,7 @@ class DB:
                 kills,
                 last_hits_at_5,
                 heroes_on_lane_str,
+                enemy_heroes_on_lane_str,
             ),
         )
         self.conn.commit()
