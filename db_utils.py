@@ -36,6 +36,13 @@ class DB:
             hero_name TEXT
         )
         """)
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS league_info (
+            league_id INTEGER PRIMARY KEY,
+            league_name TEXT,
+            tier TEXT
+        )
+        """)
         self.conn.commit()
 
     def insert_hero_data(self, hero_id, hero_name):
@@ -45,6 +52,16 @@ class DB:
         VALUES (?, ?)
         """,
             (hero_id, hero_name),
+        )
+        self.conn.commit()
+    
+    def insert_league_data(self, league_id, league_name, tier):
+        self.cursor.execute(
+            """
+        INSERT OR REPLACE INTO league_info (league_id, league_name, tier)
+        VALUES (?, ?, ?)
+        """,
+            (league_id, league_name, tier),
         )
         self.conn.commit()
 

@@ -1,6 +1,6 @@
 import time
 from db_utils import DB
-from opendota_api import get_all_league_matches, get_hero_stats, get_match
+from opendota_api import get_all_league_matches, get_hero_stats, get_league_info, get_match
 
 
 def insert_heroes(db):
@@ -94,6 +94,10 @@ try:
     fissure_playground_1_2025 = "17588"
 
     current_league_id = fissure_playground_1_2025
+    
+    # Insert league info
+    league_info = get_league_info(current_league_id)
+    db.insert_league_data(current_league_id, league_info["name"], league_info["tier"])
 
     for match in get_all_league_matches(current_league_id):
         print(match["match_id"])
