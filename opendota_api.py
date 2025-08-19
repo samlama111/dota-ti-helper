@@ -1,5 +1,6 @@
 import requests
 
+
 def get_all_league_matches(league_id):
     return requests.get(
         f"https://api.opendota.com/api/leagues/{league_id}/matches"
@@ -19,4 +20,6 @@ def get_league_info(league_id):
 
 
 def get_league_teams(league_id):
-    return requests.get(f"https://api.opendota.com/api/leagues/{league_id}/teams").json()
+    return requests.get(
+        f"https://api.opendota.com/api/leagues/{league_id}/teams"
+    ).json()

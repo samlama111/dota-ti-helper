@@ -7,28 +7,27 @@ from opendota_api import get_all_league_matches, get_league_info, get_match
 
 load_dotenv()
 
-league_id_kv = {
-    "ti_2024": "16935",
-    "wallachia_2_2024": "17119",
-    "bb_dacha_belgrade_2024": "17126",
-    "dreamleague_season_24": "17272",
-    "blast_slam_1_2024": "17414",
-    "esl_one_bangkok_2024": "17509",
-    "fissure_playground_1_2025": "17588",
-    "blast_slam_2_2024": "17417",
-    "dreamleague_season_25": "17765",
-    "wallachia_3_2025": "17891",
-    # TODO: Find IDs
-    "fissure_universe_4_2025": None,
-    "esl_one_raleigh_2025": None,
-    "wallachia_4_2025": None,
-    "blast_slam_3_2025": None,
-    "dreamleague_season_26": None,
-    "wallachia_5_2025": None,
-    "esports_world_championship_2025": None,
-    "clavision_masters_2025": None,
+league_id_kv: dict[str, int | None] = {
+    "ti_2024": 16935,
+    "wallachia_2_2024": 17119,
+    "bb_dacha_belgrade_2024": 17126,
+    "dreamleague_season_24": 17272,
+    "blast_slam_1_2024": 17414,
+    "esl_one_bangkok_2024": 17509,
+    "fissure_playground_1_2025": 17588,
+    "blast_slam_2_2024": 17417,
+    "dreamleague_season_25": 17765,
+    "wallachia_3_2025": 17891,
+    "fissure_universe_4_2025": 17907,
+    "esl_one_raleigh_2025": 17795,
+    "wallachia_4_2025": 18058,
+    "blast_slam_3_2025": 17418,
+    "dreamleague_season_26": 18111,
+    "wallachia_5_2025": 18358,
+    "esports_world_championship_2025": 18375,
+    "clavision_masters_2025": 18359,
+    "fissure_universe_6_2025": 18433,
     # To be played
-    "fissure_universe_6_2025": None,
     "ti_2025": None,
 }
 
@@ -45,31 +44,59 @@ def main():
         # Insert hero data into hero_info table
         insert_heroes(db)
 
-        # TODO: Add a loop to insert all leagues
-        current_league_id = league_id_kv["wallachia_3_2025"]
+        # Get the highest match_id from the database to determine what's already processed
+        latest_match_id_in_db = db.get_latest_match_id()
+        print(f"Latest match_id in db: {latest_match_id_in_db}")
 
-        # Insert team data into team_info table
-        insert_teams(db, current_league_id)
+        # If no matches exist yet, start from 0
+        if latest_match_id_in_db is None:
+            latest_match_id_in_db = 0
 
-        # Insert league info
-        first_match_info = get_all_league_matches(current_league_id)[0]
-        first_match_id = first_match_info["match_id"]
-        first_match = get_match(first_match_id)
+        # Process all leagues, but skip matches that are already in the database
+        for current_league_name, current_league_id in league_id_kv.items():
+            if current_league_id is None:
+                continue
 
-        league_info = get_league_info(current_league_id)
-        db.insert_league_data(
-            current_league_id,
-            league_info["name"],
-            league_info["tier"],
-            first_match["patch"],
-        )
+            print(f"Processing league {current_league_name}")
 
-        for match in get_all_league_matches(current_league_id):
-            print(match["match_id"])
-            match_info = get_match(match["match_id"])
-            create_and_insert_match_data(db, match_info, current_league_id)
-            # Time out for 5s, to avoid getting rate limited
-            time.sleep(5)
+            # Check if we need to process this league at all
+            league_matches = get_all_league_matches(current_league_id)
+            new_matches = [
+                m for m in league_matches if m["match_id"] > latest_match_id_in_db
+            ]
+
+            if not new_matches:
+                print(f"No new matches for {current_league_name}")
+                continue
+
+            print(f"Found {len(new_matches)} new matches for {current_league_name}")
+
+            # Insert team data into team_info table (only if not already present)
+            insert_teams(db, current_league_id)
+            print(f"Inserted teams for {current_league_name}")
+
+            # Insert league info (only if not already present)
+            if not db.league_exists(current_league_id):
+                first_match_info = league_matches[0]
+                first_match_id = first_match_info["match_id"]
+                first_match = get_match(first_match_id)
+
+                league_info = get_league_info(current_league_id)
+                db.insert_league_data(
+                    current_league_id,
+                    league_info["name"],
+                    league_info["tier"],
+                    first_match["patch"],
+                )
+                print(f"Inserted league info for {current_league_name}")
+
+            # Process only the new matches
+            for match in new_matches:
+                match_info = get_match(match["match_id"])
+                create_and_insert_match_data(db, match_info, current_league_id)
+                # Time out for 5s, to avoid getting rate limited
+                time.sleep(5)
+
     except Exception as e:
         print(e)
     finally:

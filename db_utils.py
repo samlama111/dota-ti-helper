@@ -4,11 +4,10 @@ from abc import ABC, abstractmethod
 from supabase import create_client
 
 # TODO: New attributes
+# - match (stage, series_game)
+
+# Not available in the API:
 # - player (position, team_role)
-# - team (current player_ids, their elo rating)
-# - tournament (stage, series_game)
-# - hero (role, pick_order)
-# - match (side, who won)
 
 # New view (inference-time, not stored in db)
 # - player_hero_games, player_hero_avg_lh_5, player_hero_std_lh_5, player_hero_avg_kills
@@ -51,13 +50,15 @@ class SQLiteDB(BaseDB):
             tournament_id INTEGER,
             match_id INTEGER,
             player_name TEXT,
+            player_account_id INTEGER,
             hero_name TEXT,
             kills INTEGER,
             last_hits_at_5 INTEGER,
             heroes_on_lane TEXT,
             enemy_heroes_on_lane TEXT,
             team_id INTEGER,
-            PRIMARY KEY (match_id, player_name)
+            is_radiant BOOLEAN,
+            PRIMARY KEY (match_id, player_account_id)
         )
         """)
         self.cursor.execute("""
@@ -77,7 +78,8 @@ class SQLiteDB(BaseDB):
         self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS team_info (
             team_id INTEGER PRIMARY KEY,
-            team_name TEXT
+            team_name TEXT,
+            rating INTEGER
         )
         """)
         self.commit()
@@ -92,13 +94,13 @@ class SQLiteDB(BaseDB):
         )
         self.commit()
 
-    def insert_team_data(self, team_id, team_name):
+    def insert_team_data(self, team_id, team_name, rating):
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO team_info (team_id, team_name)
-        VALUES (?, ?)
+        INSERT OR REPLACE INTO team_info (team_id, team_name, rating)
+        VALUES (?, ?, ?)
         """,
-            (team_id, team_name),
+            (team_id, team_name, rating),
         )
         self.commit()
 
@@ -117,12 +119,14 @@ class SQLiteDB(BaseDB):
         tournament_id,
         match_id,
         player_name,
+        player_account_id,
         hero_id,
         kills,
         last_hits_at_5,
         heroes_on_lane,
         enemy_heroes_on_lane,
         team_id,
+        is_radiant,
     ):
         # Get hero_name from hero_info table
         self.cursor.execute(
@@ -139,7 +143,7 @@ class SQLiteDB(BaseDB):
             )
             lane_heroes.append(self.cursor.fetchone()[0])
         heroes_on_lane_str = ", ".join(lane_heroes)
-        print(f"Heroes on lane: {heroes_on_lane_str}")
+        # print(f"Heroes on lane: {heroes_on_lane_str}")
 
         enemy_lane_heroes = []
         for hero in enemy_heroes_on_lane:
@@ -148,93 +152,98 @@ class SQLiteDB(BaseDB):
             )
             enemy_lane_heroes.append(self.cursor.fetchone()[0])
         enemy_heroes_on_lane_str = ", ".join(enemy_lane_heroes)
-        print(f"Enemy heroes on lane: {enemy_heroes_on_lane_str}")
+        # print(f"Enemy heroes on lane: {enemy_heroes_on_lane_str}")
 
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, team_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, player_account_id, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, team_id, is_radiant)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 tournament_id,
                 match_id,
                 player_name,
+                player_account_id,
                 current_hero_name,
                 kills,
                 last_hits_at_5,
                 heroes_on_lane_str,
                 enemy_heroes_on_lane_str,
                 team_id,
+                is_radiant,
             ),
         )
         self.commit()
 
-    def get_avg_and_median_lh_based_player_prefix(self, prefix, hero_id=None):
+    def get_player_avg_and_median_lh(self, player_account_id, hero_id=None):
         if hero_id is not None:
             self.cursor.execute(
                 """
-            SELECT player_name, last_hits_at_5 FROM match_info WHERE player_name LIKE ? AND hero_id = ?
+            SELECT last_hits_at_5 FROM match_info WHERE player_account_id = ? AND hero_id = ?
             """,
-                (prefix + "%", hero_id),
+                (player_account_id, hero_id),
             )
         else:
             self.cursor.execute(
                 """
-            SELECT player_name, last_hits_at_5 FROM match_info WHERE player_name LIKE ?
+            SELECT last_hits_at_5 FROM match_info WHERE player_account_id = ?
             """,
-                (prefix + "%",),
+                (player_account_id,),
             )
         results = self.cursor.fetchall()
 
-        player_stats = {}
-        for player_name, last_hits in results:
-            if player_name not in player_stats:
-                player_stats[player_name] = []
-            player_stats[player_name].append(last_hits)
+        player_stats = []
+        for last_hits in results:
+            player_stats.append(last_hits)
 
-        avg_and_median = []
-        for player_name, last_hits in player_stats.items():
-            avg_last_hits = float(np.mean(last_hits))
-            median_last_hits = float(np.median(last_hits))
-            avg_and_median.append((player_name, avg_last_hits, median_last_hits))
+        avg_last_hits = float(np.mean(player_stats))
+        median_last_hits = float(np.median(player_stats))
 
-        return avg_and_median
+        return avg_last_hits, median_last_hits
 
-    def get_avg_and_median_kills_based_player_prefix(self, prefix, hero_id=None):
+    def get_player_avg_and_median_kills(self, player_account_id, hero_id=None):
         if hero_id is not None:
             self.cursor.execute(
                 """
-            SELECT player_name, kills FROM match_info WHERE player_name LIKE ? AND hero_id = ?
+            SELECT kills FROM match_info WHERE player_account_id = ? AND hero_id = ?
             """,
-                (prefix + "%", hero_id),
+                (player_account_id, hero_id),
             )
         else:
             self.cursor.execute(
                 """
-            SELECT player_name, kills FROM match_info WHERE player_name LIKE ?
+            SELECT kills FROM match_info WHERE player_account_id = ?
             """,
-                (prefix + "%",),
+                (player_account_id,),
             )
         results = self.cursor.fetchall()
 
-        player_stats = {}
-        for player_name, kills in results:
-            if player_name not in player_stats:
-                player_stats[player_name] = []
-            player_stats[player_name].append(kills)
+        player_stats = []
+        for kills in results:
+            player_stats.append(kills)
 
-        avg_and_median = []
-        for player_name, kills in player_stats.items():
-            avg_kills = float(np.mean(kills))
-            median_kills = float(np.median(kills))
-            avg_and_median.append((player_name, avg_kills, median_kills))
+        avg_kills = float(np.mean(player_stats))
+        median_kills = float(np.median(player_stats))
 
-        return avg_and_median
+        return avg_kills, median_kills
 
     def get_all_players(self):
         self.cursor.execute("SELECT DISTINCT player_name FROM match_info")
         results = self.cursor.fetchall()
         return [row[0] for row in results]
+
+    def get_latest_match_id(self):
+        """Get the highest match_id from the match_info table"""
+        self.cursor.execute("SELECT MAX(match_id) FROM match_info")
+        result = self.cursor.fetchone()
+        return result[0] if result and result[0] is not None else None
+
+    def league_exists(self, league_id):
+        """Check if a league already exists in the database"""
+        self.cursor.execute(
+            "SELECT COUNT(*) FROM league_info WHERE league_id = ?", (league_id,)
+        )
+        return self.cursor.fetchone()[0] > 0
 
 
 class PostgresDB(BaseDB):
@@ -259,9 +268,9 @@ class PostgresDB(BaseDB):
             {"hero_id": hero_id, "hero_name": hero_name}
         ).execute()
 
-    def insert_team_data(self, team_id, team_name):
+    def insert_team_data(self, team_id, team_name, rating):
         self.client.table("team_info").upsert(
-            {"team_id": team_id, "team_name": team_name}
+            {"team_id": team_id, "team_name": team_name, "rating": rating}
         ).execute()
 
     def insert_league_data(self, league_id, league_name, tier, patch_id):
@@ -279,12 +288,14 @@ class PostgresDB(BaseDB):
         tournament_id,
         match_id,
         player_name,
+        player_account_id,
         hero_id,
         kills,
         last_hits_at_5,
         heroes_on_lane,
         enemy_heroes_on_lane,
         team_id,
+        is_radiant,
     ):
         # Get hero_name from hero_info table
         response = (
@@ -329,20 +340,22 @@ class PostgresDB(BaseDB):
                 "tournament_id": tournament_id,
                 "match_id": match_id,
                 "player_name": player_name,
+                "player_account_id": player_account_id,
                 "hero_name": current_hero_name,
                 "kills": kills,
                 "last_hits_at_5": last_hits_at_5,
                 "heroes_on_lane": heroes_on_lane_str,
                 "enemy_heroes_on_lane": enemy_heroes_on_lane_str,
                 "team_id": team_id,
+                "is_radiant": is_radiant,
             }
         ).execute()
 
-    def get_avg_and_median_lh_based_player_prefix(self, prefix, hero_id=None):
+    def get_player_avg_and_median_lh(self, player_account_id, hero_id=None):
         query = (
             self.client.table("match_info")
-            .select("player_name, last_hits_at_5")
-            .like("player_name", f"{prefix}%")
+            .select("last_hits_at_5")
+            .eq("player_account_id", player_account_id)
         )
 
         if hero_id is not None:
@@ -351,23 +364,37 @@ class PostgresDB(BaseDB):
         response = query.execute()
         results = response.data
 
-        player_stats = {}
+        player_stats = []
         for result in results:
-            player_name = result["player_name"]
-            last_hits = result["last_hits_at_5"]
-            if player_name not in player_stats:
-                player_stats[player_name] = []
-            player_stats[player_name].append(last_hits)
+            player_stats.append(result["last_hits_at_5"])
 
-        avg_and_median = []
-        for player_name, last_hits in player_stats.items():
-            avg_last_hits = float(np.mean(last_hits))
-            median_last_hits = float(np.median(last_hits))
-            avg_and_median.append((player_name, avg_last_hits, median_last_hits))
+        avg_last_hits = float(np.mean(player_stats))
+        median_last_hits = float(np.median(player_stats))
 
-        return avg_and_median
+        return avg_last_hits, median_last_hits
 
     def get_all_players(self):
         response = self.client.table("match_info").select("player_name").execute()
         unique_players = set(result["player_name"] for result in response.data)
         return list(unique_players)
+
+    def get_latest_match_id(self):
+        """Get the highest match_id from the match_info table"""
+        response = (
+            self.client.table("match_info")
+            .select("match_id")
+            .order("match_id", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return response.data[0]["match_id"] if response.data else None
+
+    def league_exists(self, league_id):
+        """Check if a league already exists in the database"""
+        response = (
+            self.client.table("league_info")
+            .select("league_id")
+            .eq("league_id", league_id)
+            .execute()
+        )
+        return len(response.data) > 0
