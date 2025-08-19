@@ -1,6 +1,7 @@
-import time
-from db_utils import DB
-from opendota_api import get_all_league_matches, get_hero_stats, get_league_info, get_league_teams, get_match
+from opendota_api import (
+    get_hero_stats,
+    get_league_teams,
+)
 
 
 def insert_heroes(db):
@@ -10,6 +11,7 @@ def insert_heroes(db):
     # Insert into hero_info table
     for hero_id, hero_name in zip(hero_ids, hero_names):
         db.insert_hero_data(hero_id, hero_name)
+
 
 def insert_teams(db, league_id):
     teams = get_league_teams(league_id)
@@ -59,14 +61,15 @@ def create_and_insert_match_data(db, match, tournament_id):
         heroes_on_lane = [
             player["hero_id"]
             for player in match["players"]
-            if player["lane"] == current_lane and player["isRadiant"] == is_radiant # and player["hero_id"] != hero_id
+            if player["lane"] == current_lane
+            and player["isRadiant"] == is_radiant  # and player["hero_id"] != hero_id
         ]
         enemy_heroes_on_lane = [
             player["hero_id"]
             for player in match["players"]
             if player["lane"] == current_lane and player["isRadiant"] != is_radiant
         ]
-        
+
         team_id = match["radiant_team_id"] if is_radiant else match["dire_team_id"]
 
         print(f"At 5 mins, {fallback_name} got {last_hits_at_5} last hits")
@@ -81,53 +84,5 @@ def create_and_insert_match_data(db, match, tournament_id):
             last_hits_at_5,
             heroes_on_lane,
             enemy_heroes_on_lane,
-            team_id
+            team_id,
         )
-
-def main():
-    file_path = "fissure_playground_1_2025.db"
-
-    db = DB(file_path)
-    try:
-        # Create the database and table
-        db.create_db()
-        # Insert hero data into hero_info table
-        insert_heroes(db)
-
-        ti_league_id = "16935"
-        wallachia_league_id = "17119"
-        bb_dacha_belgrade_league_id = "17126"
-        dreamleague_season_24 = "17272"
-        blast_slam_1 = "17414"
-        esl_one_bangkok_2024 = "17509"
-        fissure_playground_1_2025 = "17588"
-
-        current_league_id = fissure_playground_1_2025
-        
-        # Insert team data into team_info table
-        insert_teams(db, current_league_id)
-
-        # Insert league info
-        first_match_info = get_all_league_matches(current_league_id)[0]
-        first_match_id = first_match_info["match_id"]
-        first_match = get_match(first_match_id)
-
-        league_info = get_league_info(current_league_id)
-        db.insert_league_data(current_league_id, league_info["name"], league_info["tier"], first_match["patch"])
-
-        for match in get_all_league_matches(current_league_id):
-            print(match["match_id"])
-            # if match["match_id"] == 8080862140:
-            #    continue
-            match_info = get_match(match["match_id"])
-            create_and_insert_match_data(db, match_info, current_league_id)
-            # Time out for 5s, to avoid getting rate limited
-            time.sleep(5)
-    except Exception as e:
-        print(e)
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    main()
