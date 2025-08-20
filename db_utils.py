@@ -49,14 +49,12 @@ class SQLiteDB(BaseDB):
         CREATE TABLE IF NOT EXISTS match_info (
             tournament_id INTEGER,
             match_id INTEGER,
-            player_name TEXT,
             player_account_id INTEGER,
             hero_name TEXT,
             kills INTEGER,
             last_hits_at_5 INTEGER,
             heroes_on_lane TEXT,
             enemy_heroes_on_lane TEXT,
-            team_id INTEGER,
             is_radiant BOOLEAN,
             PRIMARY KEY (match_id, player_account_id)
         )
@@ -82,6 +80,13 @@ class SQLiteDB(BaseDB):
             rating INTEGER
         )
         """)
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS player_info (
+            player_account_id INTEGER PRIMARY KEY,
+            player_name TEXT,
+            player_team_id INTEGER
+        )
+        """)
         self.commit()
 
     def insert_hero_data(self, hero_id, hero_name):
@@ -103,6 +108,16 @@ class SQLiteDB(BaseDB):
             (team_id, team_name, rating),
         )
         self.commit()
+    
+    def insert_player_data(self, player_account_id, player_name, player_team_id):
+        self.cursor.execute(
+            """
+        INSERT OR REPLACE INTO player_info (player_account_id, player_name, player_team_id)
+        VALUES (?, ?, ?)
+        """,
+            (player_account_id, player_name, player_team_id),
+        )
+        self.commit()
 
     def insert_league_data(self, league_id, league_name, tier, patch_id):
         self.cursor.execute(
@@ -118,14 +133,12 @@ class SQLiteDB(BaseDB):
         self,
         tournament_id,
         match_id,
-        player_name,
         player_account_id,
         hero_id,
         kills,
         last_hits_at_5,
         heroes_on_lane,
         enemy_heroes_on_lane,
-        team_id,
         is_radiant,
     ):
         # Get hero_name from hero_info table
@@ -156,20 +169,18 @@ class SQLiteDB(BaseDB):
 
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_name, player_account_id, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, team_id, is_radiant)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_account_id, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, is_radiant)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 tournament_id,
                 match_id,
-                player_name,
                 player_account_id,
                 current_hero_name,
                 kills,
                 last_hits_at_5,
                 heroes_on_lane_str,
                 enemy_heroes_on_lane_str,
-                team_id,
                 is_radiant,
             ),
         )
@@ -273,6 +284,11 @@ class PostgresDB(BaseDB):
             {"team_id": team_id, "team_name": team_name, "rating": rating}
         ).execute()
 
+    def insert_player_data(self, player_account_id, player_name, player_team_id):
+        self.client.table("player_info").upsert(
+            {"player_account_id": player_account_id, "player_name": player_name, "player_team_id": player_team_id}
+        ).execute()
+
     def insert_league_data(self, league_id, league_name, tier, patch_id):
         self.client.table("league_info").upsert(
             {
@@ -287,14 +303,12 @@ class PostgresDB(BaseDB):
         self,
         tournament_id,
         match_id,
-        player_name,
         player_account_id,
         hero_id,
         kills,
         last_hits_at_5,
         heroes_on_lane,
         enemy_heroes_on_lane,
-        team_id,
         is_radiant,
     ):
         # Get hero_name from hero_info table
@@ -339,14 +353,12 @@ class PostgresDB(BaseDB):
             {
                 "tournament_id": tournament_id,
                 "match_id": match_id,
-                "player_name": player_name,
                 "player_account_id": player_account_id,
                 "hero_name": current_hero_name,
                 "kills": kills,
                 "last_hits_at_5": last_hits_at_5,
                 "heroes_on_lane": heroes_on_lane_str,
                 "enemy_heroes_on_lane": enemy_heroes_on_lane_str,
-                "team_id": team_id,
                 "is_radiant": is_radiant,
             }
         ).execute()

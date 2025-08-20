@@ -23,3 +23,6 @@ def get_league_teams(league_id):
     return requests.get(
         f"https://api.opendota.com/api/leagues/{league_id}/teams"
     ).json()
+
+def get_team_players(team_id):
+    return requests.get(f"https://api.opendota.com/api/teams/{team_id}/players").json()

@@ -1,6 +1,7 @@
 from opendota_api import (
     get_hero_stats,
     get_league_teams,
+    get_team_players,
 )
 
 
@@ -13,10 +14,17 @@ def insert_heroes(db):
         db.insert_hero_data(hero_id, hero_name)
 
 
-def insert_teams(db, league_id):
+def insert_teams_and_their_players(db, league_id):
     teams = get_league_teams(league_id)
     for team in teams:
         db.insert_team_data(team["team_id"], team["name"], team["rating"])
+        players = get_team_players(team["team_id"])
+        
+        active_players = [player for player in players if player["is_current_team_member"]]
+        for player in active_players:
+            player_name = player["name"] if player["name"] else player["personaname"]
+            fallback_name = player_name if player_name else "Saksa, or someone else idk"
+            db.insert_player_data(player["account_id"], fallback_name, team["team_id"])
 
 
 def create_and_insert_match_data(db, match, tournament_id):
@@ -26,8 +34,6 @@ def create_and_insert_match_data(db, match, tournament_id):
         return
 
     for player in match["players"]:
-        player_name = player["name"] if player["name"] else player["personaname"]
-        fallback_name = player_name if player_name else "Saksa, or someone else idk"
         hero_id = player["hero_id"]
         kills = player["hero_kills"]
         current_lane = player["lane"]
@@ -50,21 +56,17 @@ def create_and_insert_match_data(db, match, tournament_id):
             if p["lane"] == current_lane and p["isRadiant"] != is_radiant
         ]
 
-        team_id = match["radiant_team_id"] if is_radiant else match["dire_team_id"]
-
         # print(f"At 5 mins, {fallback_name} got {last_hits_at_5} last hits")
 
         # Insert data into SQLite database
         db.insert_match_data(
             tournament_id,
             match["match_id"],
-            fallback_name,
             player["account_id"],
             hero_id,
             kills,
             last_hits_at_5,
             heroes_on_lane,
             enemy_heroes_on_lane,
-            team_id,
             is_radiant,
         )

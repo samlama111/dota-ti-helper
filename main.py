@@ -2,7 +2,7 @@ import time
 from dotenv import load_dotenv
 
 from db_utils import SQLiteDB
-from insert import create_and_insert_match_data, insert_heroes, insert_teams
+from insert import create_and_insert_match_data, insert_heroes, insert_teams_and_their_players
 from opendota_api import get_all_league_matches, get_league_info, get_match
 
 load_dotenv()
@@ -72,8 +72,8 @@ def main():
             print(f"Found {len(new_matches)} new matches for {current_league_name}")
 
             # Insert team data into team_info table (only if not already present)
-            insert_teams(db, current_league_id)
-            print(f"Inserted teams for {current_league_name}")
+            insert_teams_and_their_players(db, current_league_id)
+            print(f"Inserted teams and their players for {current_league_name}")
 
             # Insert league info (only if not already present)
             if not db.league_exists(current_league_id):
