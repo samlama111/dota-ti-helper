@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota TI Helper - Player Statistics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .selection-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e1e5e9;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .selection-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .selection-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .selection-card h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            border-radius: 2px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #ff6b35;
+        }
+
+        select:disabled {
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .stats-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e1e5e9;
+            margin-top: 30px;
+        }
+
+        .stats-section h3 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .team-comparison {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .team-comparison h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .comparison-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .comparison-label {
+            font-weight: 500;
+            color: #6c757d;
+        }
+
+        .comparison-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .comparison-value.positive {
+            color: #28a745;
+        }
+
+        .comparison-value.negative {
+            color: #dc3545;
+        }
+
+        .team-message {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+
+        .team-message p {
+            color: #6c757d;
+            margin: 0;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .selection-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Dota TI Helper</h1>
+            <p>Analyze player performance statistics across leagues, teams, and heroes</p>
+        </div>
+
+        <div class="content">
+            <div class="selection-grid">
+                <div class="selection-card">
+                    <h3>📊 League</h3>
+                    <select id="leagueSelect" onchange="onLeagueChange()">
+                        <option value="">Select a league...</option>
+                    </select>
+                </div>
+
+                <div class="selection-card">
+                    <h3>👥 Team</h3>
+                    <select id="teamSelect" onchange="onTeamChange()" disabled>
+                        <option value="">Select a team...</option>
+                    </select>
+                </div>
+
+                <div class="selection-card">
+                    <h3>🎮 Player</h3>
+                    <select id="playerSelect" onchange="onPlayerChange()" disabled>
+                        <option value="">Select a player...</option>
+                    </select>
+                </div>
+
+                <div class="selection-card">
+                    <h3>⚔️ Hero</h3>
+                    <select id="heroSelect" onchange="onHeroChange()" disabled>
+                        <option value="">Select a hero...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="statsSection" class="stats-section hidden">
+                <h3>📈 Player Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h4>Last Hits at 5 min</h4>
+                        <div class="stat-value" id="lhAvg">-</div>
+                        <div class="stat-label">Average</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Last Hits at 5 min</h4>
+                        <div class="stat-value" id="lhMedian">-</div>
+                        <div class="stat-label">Median</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Kills</h4>
+                        <div class="stat-value" id="killsAvg">-</div>
+                        <div class="stat-label">Average</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Kills</h4>
+                        <div class="stat-value" id="killsMedian">-</div>
+                        <div class="stat-label">Median</div>
+                    </div>
+                </div>
+                
+                <div id="teamComparisonSection" class="team-comparison hidden">
+                    <h4>📊 Team Comparison</h4>
+                    <div class="comparison-grid">
+                        <div class="comparison-item">
+                            <span class="comparison-label">Last Hits (5 min) - Average:</span>
+                            <span class="comparison-value" id="lhDiff">-</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Last Hits (5 min) - Median:</span>
+                            <span class="comparison-value" id="lhMedianDiff">-</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Kills - Average:</span>
+                            <span class="comparison-value" id="killsDiff">-</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Kills - Median:</span>
+                            <span class="comparison-value" id="killsMedianDiff">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="teamMessageSection" class="team-message hidden">
+                    <p id="teamMessageText"></p>
+                </div>
+            </div>
+
+            <div id="loading" class="loading hidden">
+                Loading statistics...
+            </div>
+
+            <div id="error" class="error hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPlayerId = null;
+        let selectedHeroId = null;
+        let selectedTeamId = null;
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLeagues();
+            loadHeroes();
+        });
+
+        async function loadLeagues() {
+            try {
+                const response = await fetch('/api/leagues');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('leagueSelect');
+                    data.data.forEach(league => {
+                        const option = document.createElement('option');
+                        option.value = league.league_id;
+                        option.textContent = `${league.league_name} (${league.tier})`;
+                        select.appendChild(option);
+                    });
+                    
+                    // Set default to most recent league
+                    await setDefaultLeague();
+                } else {
+                    showError('Failed to load leagues: ' + data.error);
+                }
+            } catch (error) {
+                showError('Error loading leagues: ' + error.message);
+            }
+        }
+
+        async function setDefaultLeague() {
+            try {
+                const response = await fetch('/api/leagues/most-recent');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('leagueSelect');
+                    select.value = data.data.league_id;
+                    // Trigger league change to load teams
+                    onLeagueChange();
+                }
+            } catch (error) {
+                console.log('Could not set default league:', error.message);
+            }
+        }
+
+        async function loadTeams(leagueId) {
+            try {
+                const response = await fetch(`/api/teams/${leagueId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('teamSelect');
+                    select.innerHTML = '<option value="">Select a team...</option>';
+                    
+                    data.data.forEach(team => {
+                        const option = document.createElement('option');
+                        option.value = team.team_id;
+                        option.textContent = `${team.team_name} (Rating: ${team.rating})`;
+                        select.appendChild(option);
+                    });
+                    
+                    select.disabled = false;
+                } else {
+                    showError('Failed to load teams: ' + data.error);
+                }
+            } catch (error) {
+                showError('Error loading teams: ' + error.message);
+            }
+        }
+
+        async function loadPlayers(teamId) {
+            try {
+                const response = await fetch(`/api/players/${teamId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('playerSelect');
+                    select.innerHTML = '<option value="">Select a player...</option>';
+                    
+                    data.data.forEach(player => {
+                        const option = document.createElement('option');
+                        option.value = player.player_account_id;
+                        option.textContent = player.player_name;
+                        select.appendChild(option);
+                    });
+                    
+                    select.disabled = false;
+                } else {
+                    showError('Failed to load players: ' + data.error);
+                }
+            } catch (error) {
+                showError('Error loading players: ' + error.message);
+            }
+        }
+
+        async function loadHeroes() {
+            try {
+                const response = await fetch('/api/heroes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('heroSelect');
+                    data.data.forEach(hero => {
+                        const option = document.createElement('option');
+                        option.value = hero.hero_id;
+                        option.textContent = hero.hero_name;
+                        select.appendChild(option);
+                    });
+                } else {
+                    showError('Failed to load heroes: ' + data.error);
+                }
+            } catch (error) {
+                showError('Error loading heroes: ' + error.message);
+            }
+        }
+
+        async function loadStats() {
+            if (!selectedPlayerId) return;
+
+            showLoading(true);
+            hideError();
+            hideStats();
+
+            try {
+                const response = await fetch('/api/stats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_account_id: selectedPlayerId,
+                        team_id: selectedTeamId,
+                        hero_id: selectedHeroId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayStats(data.data);
+                } else {
+                    showError('Failed to load statistics: ' + data.error);
+                }
+            } catch (error) {
+                showError('Error loading statistics: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+
+
+        function displayStats(stats) {
+            // Display player stats
+            document.getElementById('lhAvg').textContent = stats.player_stats.last_hits.average;
+            document.getElementById('lhMedian').textContent = stats.player_stats.last_hits.median;
+            document.getElementById('killsAvg').textContent = stats.player_stats.kills.average;
+            document.getElementById('killsMedian').textContent = stats.player_stats.kills.median;
+            
+            // Hide all team-related sections initially
+            hideTeamComparison();
+            hideTeamMessage();
+            
+            // Show team comparison if differences are available
+            if (stats.differences) {
+                displayTeamComparison(stats.differences);
+                showTeamComparison();
+            }
+            
+            // Show team message if available (e.g., "no matches found")
+            if (stats.team_message) {
+                displayTeamMessage(stats.team_message);
+                showTeamMessage();
+            }
+            
+            showStats();
+        }
+
+        function displayTeamComparison(differences) {
+            // Display differences
+            const lhDiff = differences.last_hits.average_diff;
+            const lhMedianDiff = differences.last_hits.median_diff;
+            const killsDiff = differences.kills.average_diff;
+            const killsMedianDiff = differences.kills.median_diff;
+            
+            document.getElementById('lhDiff').textContent = formatDifference(lhDiff);
+            document.getElementById('lhMedianDiff').textContent = formatDifference(lhMedianDiff);
+            document.getElementById('killsDiff').textContent = formatDifference(killsDiff);
+            document.getElementById('killsMedianDiff').textContent = formatDifference(killsMedianDiff);
+            
+            // Add color classes
+            document.getElementById('lhDiff').className = `comparison-value ${getDifferenceClass(lhDiff)}`;
+            document.getElementById('lhMedianDiff').className = `comparison-value ${getDifferenceClass(lhMedianDiff)}`;
+            document.getElementById('killsDiff').className = `comparison-value ${getDifferenceClass(killsDiff)}`;
+            document.getElementById('killsMedianDiff').className = `comparison-value ${getDifferenceClass(killsMedianDiff)}`;
+        }
+
+        function formatDifference(diff) {
+            if (diff > 0) {
+                return `+${diff}`;
+            } else if (diff < 0) {
+                return `${diff}`;
+            } else {
+                return '0';
+            }
+        }
+
+        function getDifferenceClass(diff) {
+            if (diff > 0) {
+                return 'positive';
+            } else if (diff < 0) {
+                return 'negative';
+            } else {
+                return '';
+            }
+        }
+
+
+
+        function onLeagueChange() {
+            const leagueId = document.getElementById('leagueSelect').value;
+            if (leagueId) {
+                loadTeams(leagueId);
+                resetTeamAndPlayer();
+            } else {
+                resetTeamAndPlayer();
+            }
+        }
+
+        function onTeamChange() {
+            const teamId = document.getElementById('teamSelect').value;
+            selectedTeamId = teamId;
+            
+            if (teamId) {
+                loadPlayers(teamId);
+                resetPlayer();
+            } else {
+                resetPlayer();
+            }
+        }
+
+        function onPlayerChange() {
+            const playerId = document.getElementById('playerSelect').value;
+            if (playerId) {
+                selectedPlayerId = playerId;
+                document.getElementById('heroSelect').disabled = false;
+                loadStats();
+            } else {
+                selectedPlayerId = null;
+                document.getElementById('heroSelect').disabled = true;
+                hideStats();
+                hideTeamComparison();
+                hideTeamMessage();
+            }
+        }
+
+        function onHeroChange() {
+            const heroId = document.getElementById('heroSelect').value;
+            if (heroId) {
+                selectedHeroId = heroId;
+            } else {
+                selectedHeroId = null;
+            }
+            
+            if (selectedPlayerId) {
+                loadStats();
+            }
+        }
+
+        function resetTeamAndPlayer() {
+            document.getElementById('teamSelect').innerHTML = '<option value="">Select a team...</option>';
+            document.getElementById('teamSelect').disabled = true;
+            selectedTeamId = null;
+            resetPlayer();
+        }
+
+        function resetPlayer() {
+            document.getElementById('playerSelect').innerHTML = '<option value="">Select a player...</option>';
+            document.getElementById('playerSelect').disabled = true;
+            document.getElementById('heroSelect').disabled = true;
+            selectedPlayerId = null;
+            selectedHeroId = null;
+            hideStats();
+            hideTeamComparison();
+            hideTeamMessage();
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+        }
+
+        function showStats() {
+            document.getElementById('statsSection').classList.remove('hidden');
+        }
+
+        function hideStats() {
+            document.getElementById('statsSection').classList.add('hidden');
+        }
+
+
+
+        function showTeamComparison() {
+            document.getElementById('teamComparisonSection').classList.remove('hidden');
+        }
+
+        function hideTeamComparison() {
+            document.getElementById('teamComparisonSection').classList.add('hidden');
+        }
+
+        function displayTeamMessage(message) {
+            document.getElementById('teamMessageText').textContent = message;
+        }
+
+        function showTeamMessage() {
+            document.getElementById('teamMessageSection').classList.remove('hidden');
+        }
+
+        function hideTeamMessage() {
+            document.getElementById('teamMessageSection').classList.add('hidden');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

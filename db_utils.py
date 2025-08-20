@@ -47,7 +47,7 @@ class SQLiteDB(BaseDB):
         """Create database tables - common for both implementations"""
         self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS match_info (
-            tournament_id INTEGER,
+            league_id INTEGER,
             match_id INTEGER,
             player_account_id INTEGER,
             hero_name TEXT,
@@ -131,7 +131,7 @@ class SQLiteDB(BaseDB):
 
     def insert_match_data(
         self,
-        tournament_id,
+        league_id,
         match_id,
         player_account_id,
         hero_id,
@@ -169,11 +169,11 @@ class SQLiteDB(BaseDB):
 
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (tournament_id, match_id, player_account_id, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, is_radiant)
+        INSERT OR REPLACE INTO match_info (league_id, match_id, player_account_id, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, is_radiant)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
-                tournament_id,
+                league_id,
                 match_id,
                 player_account_id,
                 current_hero_name,
@@ -207,6 +207,9 @@ class SQLiteDB(BaseDB):
         for last_hits in results:
             player_stats.append(last_hits)
 
+        # TODO: Add error/warning
+        if len(player_stats) == 0:
+            return 0, 0
         avg_last_hits = float(np.mean(player_stats))
         median_last_hits = float(np.median(player_stats))
 
@@ -233,15 +236,100 @@ class SQLiteDB(BaseDB):
         for kills in results:
             player_stats.append(kills)
 
+        # TODO: Add error/warning
+        if len(player_stats) == 0:
+            return 0, 0
         avg_kills = float(np.mean(player_stats))
         median_kills = float(np.median(player_stats))
 
         return avg_kills, median_kills
 
-    def get_all_players(self):
-        self.cursor.execute("SELECT DISTINCT player_name FROM match_info")
+    def get_all_leagues(self):
+        """Get all leagues from the database"""
+        self.cursor.execute("SELECT league_id, league_name, tier FROM league_info ORDER BY league_name")
         results = self.cursor.fetchall()
-        return [row[0] for row in results]
+        return [{"league_id": row[0], "league_name": row[1], "tier": row[2]} for row in results]
+
+    def get_most_recent_league(self):
+        """Get the most recent league based on league_id (assuming higher ID = more recent)"""
+        self.cursor.execute("SELECT league_id, league_name, tier FROM league_info ORDER BY league_id DESC LIMIT 1")
+        result = self.cursor.fetchone()
+        if result:
+            return {"league_id": result[0], "league_name": result[1], "tier": result[2]}
+        return None
+
+    def get_team_avg_and_median_lh(self, team_id, hero_id=None):
+        """Get average and median last hits for a team"""
+        if hero_id is not None:
+            self.cursor.execute("""
+                SELECT m.last_hits_at_5 FROM match_info m
+                JOIN player_info p ON m.player_account_id = p.player_account_id
+                WHERE p.player_team_id = ? AND m.hero_id = ?
+            """, (team_id, hero_id))
+        else:
+            self.cursor.execute("""
+                SELECT m.last_hits_at_5 FROM match_info m
+                JOIN player_info p ON m.player_account_id = p.player_account_id
+                WHERE p.player_team_id = ?
+            """, (team_id,))
+        
+        results = self.cursor.fetchall()
+        if len(results) == 0:
+            return None, None
+        
+        team_stats = [row[0] for row in results]
+        avg_last_hits = float(np.mean(team_stats))
+        median_last_hits = float(np.median(team_stats))
+        
+        return avg_last_hits, median_last_hits
+
+    def get_team_avg_and_median_kills(self, team_id, hero_id=None):
+        """Get average and median kills for a team"""
+        if hero_id is not None:
+            self.cursor.execute("""
+                SELECT m.kills FROM match_info m
+                JOIN player_info p ON m.player_account_id = p.player_account_id
+                WHERE p.player_team_id = ? AND m.hero_id = ?
+            """, (team_id, hero_id))
+        else:
+            self.cursor.execute("""
+                SELECT m.kills FROM match_info m
+                JOIN player_info p ON m.player_account_id = p.player_account_id
+                WHERE p.player_team_id = ?
+            """, (team_id,))
+        
+        results = self.cursor.fetchall()
+        if len(results) == 0:
+            return None, None
+        
+        team_stats = [row[0] for row in results]
+        avg_kills = float(np.mean(team_stats))
+        median_kills = float(np.median(team_stats))
+        
+        return avg_kills, median_kills
+
+    def get_all_teams(self):
+        """Get all teams from the database"""
+        self.cursor.execute("SELECT team_id, team_name, rating FROM team_info ORDER BY team_name")
+        results = self.cursor.fetchall()
+        return [{"team_id": row[0], "team_name": row[1], "rating": row[2]} for row in results]
+
+    def get_players_by_team(self, team_id):
+        """Get players from a specific team"""
+        self.cursor.execute("""
+            SELECT player_account_id, player_name 
+            FROM player_info 
+            WHERE player_team_id = ?
+            ORDER BY player_name
+        """, (team_id,))
+        results = self.cursor.fetchall()
+        return [{"player_account_id": row[0], "player_name": row[1]} for row in results]
+
+    def get_all_heroes(self):
+        """Get all heroes from the database"""
+        self.cursor.execute("SELECT hero_id, hero_name FROM hero_info ORDER BY hero_name")
+        results = self.cursor.fetchall()
+        return [{"hero_id": row[0], "hero_name": row[1]} for row in results]
 
     def get_latest_match_id(self):
         """Get the highest match_id from the match_info table"""
@@ -301,7 +389,7 @@ class PostgresDB(BaseDB):
 
     def insert_match_data(
         self,
-        tournament_id,
+        league_id,
         match_id,
         player_account_id,
         hero_id,
@@ -351,7 +439,7 @@ class PostgresDB(BaseDB):
         # Insert match data
         self.client.table("match_info").upsert(
             {
-                "tournament_id": tournament_id,
+                "league_id": league_id,
                 "match_id": match_id,
                 "player_account_id": player_account_id,
                 "hero_name": current_hero_name,
@@ -380,15 +468,48 @@ class PostgresDB(BaseDB):
         for result in results:
             player_stats.append(result["last_hits_at_5"])
 
+        # TODO: Add error/warning
+        if len(player_stats) == 0:
+            return 0, 0
         avg_last_hits = float(np.mean(player_stats))
         median_last_hits = float(np.median(player_stats))
 
         return avg_last_hits, median_last_hits
 
-    def get_all_players(self):
-        response = self.client.table("match_info").select("player_name").execute()
-        unique_players = set(result["player_name"] for result in response.data)
-        return list(unique_players)
+    def get_all_leagues(self):
+        """Get all leagues from the database"""
+        response = self.client.table("league_info").select("league_id, league_name, tier").order("league_name").execute()
+        return [{"league_id": row["league_id"], "league_name": row["league_name"], "tier": row["tier"]} for row in response.data]
+
+    def get_most_recent_league(self):
+        """Get the most recent league based on league_id (assuming higher ID = more recent)"""
+        response = self.client.table("league_info").select("league_id, league_name, tier").order("league_id", desc=True).limit(1).execute()
+        if response.data:
+            row = response.data[0]
+            return {"league_id": row["league_id"], "league_name": row["league_name"], "tier": row["tier"]}
+        return None
+
+    def get_team_avg_and_median_lh(self, team_id, hero_id=None):
+        """Get average and median last hits for a team"""
+        # For PostgresDB, we'll need to use a different approach since joins are complex
+        # For now, return placeholder values - this can be improved later
+        return None, None
+
+    def get_team_avg_and_median_kills(self, team_id, hero_id=None):
+        """Get average and median kills for a team"""
+        # For PostgresDB, we'll need to use a different approach since joins are complex
+        # For now, return placeholder values - this can be improved later
+        return None, None
+
+    def get_players_by_team(self, team_id):
+        """Get players from a specific team"""
+        response = self.client.table("player_info").select("player_account_id, player_name").eq("player_team_id", team_id).order("player_name").execute()
+        return [{"player_account_id": row["player_account_id"], "player_name": row["player_name"]} for row in response.data]
+
+    def get_all_heroes(self):
+        """Get all heroes from the database"""
+        response = self.client.table("hero_info").select("hero_id, hero_name").order("hero_name").execute()
+        return [{"hero_id": row["hero_id"], "hero_name": row["hero_name"]} for row in response.data]
 
     def get_latest_match_id(self):
         """Get the highest match_id from the match_info table"""

@@ -1,3 +1,4 @@
+from db_utils import BaseDB
 from opendota_api import (
     get_hero_stats,
     get_league_teams,
@@ -27,7 +28,7 @@ def insert_teams_and_their_players(db, league_id):
             db.insert_player_data(player["account_id"], fallback_name, team["team_id"])
 
 
-def create_and_insert_match_data(db, match, tournament_id):
+def create_and_insert_match_data(db: BaseDB, match: dict, league_id: int):
     if "players" not in match:
         print(match)  # Prints most likely error
         print("No players in match")
@@ -60,7 +61,7 @@ def create_and_insert_match_data(db, match, tournament_id):
 
         # Insert data into SQLite database
         db.insert_match_data(
-            tournament_id,
+            league_id,
             match["match_id"],
             player["account_id"],
             hero_id,
