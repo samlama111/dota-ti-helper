@@ -207,9 +207,8 @@ class SQLiteDB(BaseDB):
         for last_hits in results:
             player_stats.append(last_hits)
 
-        # TODO: Add error/warning
         if len(player_stats) == 0:
-            return 0, 0
+            return None, None
         avg_last_hits = float(np.mean(player_stats))
         median_last_hits = float(np.median(player_stats))
 
@@ -236,12 +235,49 @@ class SQLiteDB(BaseDB):
         for kills in results:
             player_stats.append(kills)
 
-        # TODO: Add error/warning
         if len(player_stats) == 0:
-            return 0, 0
+            return None, None
         avg_kills = float(np.mean(player_stats))
         median_kills = float(np.median(player_stats))
 
+        return avg_kills, median_kills
+
+    def get_hero_avg_and_median_lh(self, hero_id):
+        """Get average and median last hits for a hero across all teams"""
+        if hero_id is not None:
+            self.cursor.execute("""
+                SELECT last_hits_at_5 FROM match_info WHERE hero_id = ?
+            """, (hero_id,))
+        else:
+            return None, None
+        
+        results = self.cursor.fetchall()
+        if len(results) == 0:
+            return None, None
+        
+        hero_stats = [row[0] for row in results]
+        avg_last_hits = float(np.mean(hero_stats))
+        median_last_hits = float(np.median(hero_stats))
+        
+        return avg_last_hits, median_last_hits
+
+    def get_hero_avg_and_median_kills(self, hero_id):
+        """Get average and median kills for a hero across all teams"""
+        if hero_id is not None:
+            self.cursor.execute("""
+                SELECT kills FROM match_info WHERE hero_id = ?
+            """, (hero_id,))
+        else:
+            return None, None
+        
+        results = self.cursor.fetchall()
+        if len(results) == 0:
+            return None, None
+        
+        hero_stats = [row[0] for row in results]
+        avg_kills = float(np.mean(hero_stats))
+        median_kills = float(np.median(hero_stats))
+        
         return avg_kills, median_kills
 
     def get_all_leagues(self):
@@ -468,9 +504,8 @@ class PostgresDB(BaseDB):
         for result in results:
             player_stats.append(result["last_hits_at_5"])
 
-        # TODO: Add error/warning
         if len(player_stats) == 0:
-            return 0, 0
+            return None, None
         avg_last_hits = float(np.mean(player_stats))
         median_last_hits = float(np.median(player_stats))
 
@@ -497,6 +532,18 @@ class PostgresDB(BaseDB):
 
     def get_team_avg_and_median_kills(self, team_id, hero_id=None):
         """Get average and median kills for a team"""
+        # For PostgresDB, we'll need to use a different approach since joins are complex
+        # For now, return placeholder values - this can be improved later
+        return None, None
+
+    def get_hero_avg_and_median_lh(self, hero_id):
+        """Get average and median last hits for a hero across all teams"""
+        # For PostgresDB, we'll need to use a different approach since joins are complex
+        # For now, return placeholder values - this can be improved later
+        return None, None
+
+    def get_hero_avg_and_median_kills(self, hero_id):
+        """Get average and median kills for a hero across all teams"""
         # For PostgresDB, we'll need to use a different approach since joins are complex
         # For now, return placeholder values - this can be improved later
         return None, None
