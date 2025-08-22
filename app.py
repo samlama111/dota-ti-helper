@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
-from db_utils import SQLiteDB
+from db_utils import SQLiteDB, PostgresDB
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,9 +9,16 @@ app = Flask(__name__)
 
 # Initialize database connection
 def get_db():
-    # Default to SQLite
+    # Check if we should use PostgresDB (Supabase) or SQLiteDB
+    # supabase_url = os.getenv('SUPABASE_URL')
+    # supabase_key = os.getenv('SUPABASE_KEY')
+    
+    # if supabase_url and supabase_key:
+    #     return PostgresDB(supabase_url, supabase_key)
+    # else:
+        # Default to SQLite
     file_path_prefix = "new_data/"
-    file_path = file_path_prefix + "dota_2_data_2025_08_22.db"
+    file_path = file_path_prefix + "dota_2_data_2025_08_20.db"
     return SQLiteDB(file_path)
 
 @app.route('/')
