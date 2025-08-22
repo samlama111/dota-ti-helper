@@ -50,7 +50,7 @@ class SQLiteDB(BaseDB):
             league_id INTEGER,
             match_id INTEGER,
             player_account_id INTEGER,
-            hero_name TEXT,
+            hero_id INTEGER,
             kills INTEGER,
             last_hits_at_5 INTEGER,
             heroes_on_lane TEXT,
@@ -141,14 +141,6 @@ class SQLiteDB(BaseDB):
         enemy_heroes_on_lane,
         is_radiant,
     ):
-        # Get hero_name from hero_info table
-        self.cursor.execute(
-            "SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,)
-        )
-        current_hero_name = self.cursor.fetchone()[0]
-        if current_hero_name is None:
-            raise ValueError(f"Hero with id {hero_id} not found")
-
         lane_heroes = []
         for hero in heroes_on_lane:
             self.cursor.execute(
@@ -169,14 +161,14 @@ class SQLiteDB(BaseDB):
 
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (league_id, match_id, player_account_id, hero_name, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, is_radiant)
+        INSERT OR REPLACE INTO match_info (league_id, match_id, player_account_id, hero_id, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, is_radiant)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 league_id,
                 match_id,
                 player_account_id,
-                current_hero_name,
+                hero_id,
                 kills,
                 last_hits_at_5,
                 heroes_on_lane_str,

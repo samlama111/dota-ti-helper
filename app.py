@@ -10,7 +10,7 @@ app = Flask(__name__)
 def get_db():
     # Default to SQLite
     file_path_prefix = "new_data/"
-    file_path = file_path_prefix + "dota_2_data_2025_08_20.db"
+    file_path = file_path_prefix + "dota_2_data_2025_08_22.db"
     return SQLiteDB(file_path)
 
 @app.route('/')
