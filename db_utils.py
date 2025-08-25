@@ -178,100 +178,6 @@ class SQLiteDB(BaseDB):
         )
         self.commit()
 
-    def get_player_avg_and_median_lh(self, player_account_id, hero_id=None):
-        if hero_id is not None:
-            self.cursor.execute(
-                """
-            SELECT last_hits_at_5 FROM match_info WHERE player_account_id = ? AND hero_id = ?
-            """,
-                (player_account_id, hero_id),
-            )
-        else:
-            self.cursor.execute(
-                """
-            SELECT last_hits_at_5 FROM match_info WHERE player_account_id = ?
-            """,
-                (player_account_id,),
-            )
-        results = self.cursor.fetchall()
-
-        player_stats = []
-        for last_hits in results:
-            player_stats.append(last_hits)
-
-        if len(player_stats) == 0:
-            return None, None
-        avg_last_hits = float(np.mean(player_stats))
-        median_last_hits = float(np.median(player_stats))
-
-        return avg_last_hits, median_last_hits
-
-    def get_player_avg_and_median_kills(self, player_account_id, hero_id=None):
-        if hero_id is not None:
-            self.cursor.execute(
-                """
-            SELECT kills FROM match_info WHERE player_account_id = ? AND hero_id = ?
-            """,
-                (player_account_id, hero_id),
-            )
-        else:
-            self.cursor.execute(
-                """
-            SELECT kills FROM match_info WHERE player_account_id = ?
-            """,
-                (player_account_id,),
-            )
-        results = self.cursor.fetchall()
-
-        player_stats = []
-        for kills in results:
-            player_stats.append(kills)
-
-        if len(player_stats) == 0:
-            return None, None
-        avg_kills = float(np.mean(player_stats))
-        median_kills = float(np.median(player_stats))
-
-        return avg_kills, median_kills
-
-    def get_hero_avg_and_median_lh(self, hero_id):
-        """Get average and median last hits for a hero across all teams"""
-        if hero_id is not None:
-            self.cursor.execute("""
-                SELECT last_hits_at_5 FROM match_info WHERE hero_id = ?
-            """, (hero_id,))
-        else:
-            return None, None
-        
-        results = self.cursor.fetchall()
-        if len(results) == 0:
-            return None, None
-        
-        hero_stats = [row[0] for row in results]
-        avg_last_hits = float(np.mean(hero_stats))
-        median_last_hits = float(np.median(hero_stats))
-        
-        return avg_last_hits, median_last_hits
-
-    def get_hero_avg_and_median_kills(self, hero_id):
-        """Get average and median kills for a hero across all teams"""
-        if hero_id is not None:
-            self.cursor.execute("""
-                SELECT kills FROM match_info WHERE hero_id = ?
-            """, (hero_id,))
-        else:
-            return None, None
-        
-        results = self.cursor.fetchall()
-        if len(results) == 0:
-            return None, None
-        
-        hero_stats = [row[0] for row in results]
-        avg_kills = float(np.mean(hero_stats))
-        median_kills = float(np.median(hero_stats))
-        
-        return avg_kills, median_kills
-
     def get_all_leagues(self):
         """Get all leagues from the database"""
         self.cursor.execute("SELECT league_id, league_name, tier FROM league_info ORDER BY league_name")
@@ -285,56 +191,6 @@ class SQLiteDB(BaseDB):
         if result:
             return {"league_id": result[0], "league_name": result[1], "tier": result[2]}
         return None
-
-    def get_team_avg_and_median_lh(self, team_id, hero_id=None):
-        """Get average and median last hits for a team"""
-        if hero_id is not None:
-            self.cursor.execute("""
-                SELECT m.last_hits_at_5 FROM match_info m
-                JOIN player_info p ON m.player_account_id = p.player_account_id
-                WHERE p.player_team_id = ? AND m.hero_id = ?
-            """, (team_id, hero_id))
-        else:
-            self.cursor.execute("""
-                SELECT m.last_hits_at_5 FROM match_info m
-                JOIN player_info p ON m.player_account_id = p.player_account_id
-                WHERE p.player_team_id = ?
-            """, (team_id,))
-        
-        results = self.cursor.fetchall()
-        if len(results) == 0:
-            return None, None
-        
-        team_stats = [row[0] for row in results]
-        avg_last_hits = float(np.mean(team_stats))
-        median_last_hits = float(np.median(team_stats))
-        
-        return avg_last_hits, median_last_hits
-
-    def get_team_avg_and_median_kills(self, team_id, hero_id=None):
-        """Get average and median kills for a team"""
-        if hero_id is not None:
-            self.cursor.execute("""
-                SELECT m.kills FROM match_info m
-                JOIN player_info p ON m.player_account_id = p.player_account_id
-                WHERE p.player_team_id = ? AND m.hero_id = ?
-            """, (team_id, hero_id))
-        else:
-            self.cursor.execute("""
-                SELECT m.kills FROM match_info m
-                JOIN player_info p ON m.player_account_id = p.player_account_id
-                WHERE p.player_team_id = ?
-            """, (team_id,))
-        
-        results = self.cursor.fetchall()
-        if len(results) == 0:
-            return None, None
-        
-        team_stats = [row[0] for row in results]
-        avg_kills = float(np.mean(team_stats))
-        median_kills = float(np.median(team_stats))
-        
-        return avg_kills, median_kills
 
     def get_all_teams(self):
         """Get all teams from the database"""
@@ -371,3 +227,199 @@ class SQLiteDB(BaseDB):
             "SELECT COUNT(*) FROM league_info WHERE league_id = ?", (league_id,)
         )
         return self.cursor.fetchone()[0] > 0
+
+    def get_lane_matchups(self, hero_id, friendly_hero_name=None, enemy_hero_names=None, is_radiant=None):
+        """Get lane matchup statistics for a hero against specific friendly and enemy heroes"""
+        query = """
+            SELECT 
+                m.last_hits_at_5,
+                m.kills,
+                m.heroes_on_lane,
+                m.enemy_heroes_on_lane,
+                m.is_radiant,
+                m.match_id
+            FROM match_info m
+            WHERE m.hero_id = ?
+        """
+        params = [hero_id]
+        
+        if friendly_hero_name:
+            query += " AND m.heroes_on_lane LIKE ?"
+            params.append(f"%{friendly_hero_name}%")
+        
+        if enemy_hero_names:
+            if len(enemy_hero_names) == 1:
+                query += " AND m.enemy_heroes_on_lane LIKE ?"
+                params.append(f"%{enemy_hero_names[0]}%")
+            else:
+                # For multiple enemy heroes, check if both are present
+                placeholders = " AND ".join([f"m.enemy_heroes_on_lane LIKE ?" for _ in enemy_hero_names])
+                query += f" AND ({placeholders})"
+                params.extend([f"%{ename}%" for ename in enemy_hero_names])
+        
+        if is_radiant is not None:
+            query += " AND m.is_radiant = ?"
+            params.append(is_radiant)
+        
+        self.cursor.execute(query, params)
+        results = self.cursor.fetchall()
+        
+        if not results:
+            return None, None, None, None
+        
+        last_hits = [row[0] for row in results]
+        kills = [row[1] for row in results]
+        
+        avg_last_hits = float(np.mean(last_hits))
+        median_last_hits = float(np.median(last_hits))
+        avg_kills = float(np.mean(kills))
+        median_kills = float(np.median(kills))
+        
+        return avg_last_hits, median_last_hits, avg_kills, median_kills
+
+    def get_hero_performance_by_side(self, hero_id, is_radiant):
+        """Get hero performance statistics for a specific side (Radiant/Dire)"""
+        self.cursor.execute("""
+            SELECT last_hits_at_5, kills
+            FROM match_info 
+            WHERE hero_id = ? AND is_radiant = ?
+        """, (hero_id, is_radiant))
+        
+        results = self.cursor.fetchall()
+        if not results:
+            return None, None, None, None
+        
+        last_hits = [row[0] for row in results]
+        kills = [row[1] for row in results]
+        
+        avg_last_hits = float(np.mean(last_hits))
+        median_last_hits = float(np.median(last_hits))
+        avg_kills = float(np.mean(kills))
+        median_kills = float(np.median(kills))
+        
+        return avg_last_hits, median_last_hits, avg_kills, median_kills
+
+    def get_matchup_statistics(self, hero_id, enemy_hero_name, is_radiant=None):
+        """Get specific hero vs hero matchup statistics"""
+        query = """
+            SELECT last_hits_at_5, kills
+            FROM match_info 
+            WHERE hero_id = ? AND enemy_heroes_on_lane LIKE ?
+        """
+        params = [hero_id, f"%{enemy_hero_name}%"]
+        
+        if is_radiant is not None:
+            query += " AND m.is_radiant = ?"
+            params.append(is_radiant)
+        
+        self.cursor.execute(query, params)
+        results = self.cursor.fetchall()
+        
+        if not results:
+            return None, None, None, None
+        
+        last_hits = [row[0] for row in results]
+        kills = [row[1] for row in results]
+        
+        avg_last_hits = float(np.mean(last_hits))
+        median_last_hits = float(np.median(last_hits))
+        avg_kills = float(np.mean(kills))
+        median_kills = float(np.median(kills))
+        
+        return avg_last_hits, median_last_hits, avg_kills, median_kills
+
+    def get_hero_name_by_id(self, hero_id):
+        """Get hero name by hero ID"""
+        self.cursor.execute("SELECT hero_name FROM hero_info WHERE hero_id = ?", (hero_id,))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+
+    def get_heroes_played_by_player(self, player_account_id):
+        """Get all heroes that a specific player has played"""
+        self.cursor.execute("""
+            SELECT DISTINCT h.hero_id, h.hero_name
+            FROM hero_info h
+            JOIN match_info m ON h.hero_id = m.hero_id
+            WHERE m.player_account_id = ?
+            ORDER BY h.hero_name
+        """, (player_account_id,))
+        
+        results = self.cursor.fetchall()
+        return [{"hero_id": row[0], "hero_name": row[1]} for row in results]
+
+    def get_comprehensive_stats(self, metric, filters=None):
+        """
+        Get comprehensive statistics for a given metric with optional filters
+        
+        Args:
+            metric: 'last_hits_at_5' or 'kills'
+            filters: dict with optional keys: player_id, hero_id, team_id, league_id, patch_id
+        
+        Returns:
+            dict with: count, mean, median, std, min, max, q25, q75
+        """
+        # Build the WHERE clause based on filters
+        where_conditions = []
+        params = []
+        
+        if filters:
+            if filters.get('player_id'):
+                where_conditions.append("m.player_account_id = ?")
+                params.append(filters['player_id'])
+            if filters.get('hero_id'):
+                where_conditions.append("m.hero_id = ?")
+                params.append(filters['hero_id'])
+            if filters.get('team_id'):
+                where_conditions.append("m.player_account_id IN (SELECT player_account_id FROM player_info WHERE player_team_id = ?)")
+                params.append(filters['team_id'])
+            if filters.get('league_id'):
+                where_conditions.append("m.league_id = ?")
+                params.append(filters['league_id'])
+            if filters.get('patch_id'):
+                where_conditions.append("l.patch_id = ?")
+                params.append(filters['patch_id'])
+        
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        
+        # Join with league_info to get patch information
+        query = f"""
+            SELECT m.{metric} 
+            FROM match_info m
+            JOIN league_info l ON m.league_id = l.league_id
+            WHERE {where_clause}
+        """
+        
+        self.cursor.execute(query, params)
+        results = self.cursor.fetchall()
+        
+        if not results:
+            return None
+        
+        values = [row[0] for row in results if row[0] is not None]
+        
+        if not values:
+            return None
+        
+        # Calculate comprehensive statistics
+        stats = {
+            'count': len(values),
+            'mean': float(np.mean(values)),
+            'median': float(np.median(values)),
+            'std': float(np.std(values)),
+            'min': float(np.min(values)),
+            'max': float(np.max(values)),
+            'q25': float(np.percentile(values, 25)),
+            'q75': float(np.percentile(values, 75))
+        }
+        
+        return stats
+
+    def get_current_patch_id(self):
+        """Get the most recent patch ID from the database"""
+        self.cursor.execute("""
+            SELECT patch_id FROM league_info 
+            ORDER BY league_id DESC 
+            LIMIT 1
+        """)
+        result = self.cursor.fetchone()
+        return result[0] if result else None

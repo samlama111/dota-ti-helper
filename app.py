@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for
 from db_utils import SQLiteDB
 from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 # Initialize database connection
 def get_db():
@@ -53,218 +53,124 @@ def get_players_html(team_id):
     except Exception as e:
         return f'<option value="">Error loading players: {str(e)}</option>'
 
-# HTMX route for loading stats
-@app.route('/stats/<int:player_id>')
-def get_stats_html(player_id):
+# HTMX route for loading heroes (filtered by player if selected)
+@app.route('/heroes/<int:player_id>')
+def get_heroes_html(player_id):
     try:
-        team_id = request.args.get('team_id', type=int)
-        hero_id = request.args.get('hero_id', type=int)
-        
         db = get_db()
-        
-        # Get overall player stats (across all heroes) - Always available
-        overall_lh_avg, overall_lh_median = db.get_player_avg_and_median_lh(player_id, None)
-        overall_kills_avg, overall_kills_median = db.get_player_avg_and_median_kills(player_id, None)
-        
-        # Check if overall stats are available
-        if overall_lh_avg is not None and overall_kills_avg is not None:
-            overall_stats = {
-                'last_hits': {'average': round(overall_lh_avg, 2), 'median': round(overall_lh_median, 2)},
-                'kills': {'average': round(overall_kills_avg, 2), 'median': round(overall_kills_median, 2)}
-            }
+        if player_id and player_id > 0:
+            # Get heroes played by this specific player, in any tournament/patch
+            heroes = db.get_heroes_played_by_player(player_id)
         else:
-            overall_stats = None
+            # Get all heroes if no player selected
+            heroes = db.get_all_heroes()
         
-        # Only show hero-specific stats if a hero is selected
-        player_hero_stats = None
-        team_hero_stats = None
-        hero_stats = None
-        
-        if hero_id:
-            # Get player stats for this specific hero
-            player_lh_avg, player_lh_median = db.get_player_avg_and_median_lh(player_id, hero_id)
-            player_kills_avg, player_kills_median = db.get_player_avg_and_median_kills(player_id, hero_id)
-            
-            if player_lh_avg is not None and player_kills_avg is not None:
-                player_hero_stats = {
-                    'last_hits': {
-                        'average': round(player_lh_avg, 2),
-                        'median': round(player_lh_median, 2)
-                    },
-                    'kills': {
-                        'average': round(player_kills_avg, 2),
-                        'median': round(player_kills_median, 2)
-                    }
-                }
-            
-            # If team_id is provided, get team stats for this hero
-            if team_id:
-                team_lh_avg, team_lh_median = db.get_team_avg_and_median_lh(team_id, hero_id)
-                team_kills_avg, team_kills_median = db.get_team_avg_and_median_kills(team_id, hero_id)
-                
-                if team_lh_avg is not None and team_kills_avg is not None:
-                    team_hero_stats = {
-                        'last_hits': {'average': round(team_lh_avg, 2), 'median': round(team_lh_median, 2)},
-                        'kills': {'average': round(team_kills_avg, 2), 'median': round(team_kills_median, 2)}
-                    }
-            
-            # Get hero stats across all teams
-            hero_lh_avg, hero_lh_median = db.get_hero_avg_and_median_lh(hero_id)
-            hero_kills_avg, hero_kills_median = db.get_hero_avg_and_median_kills(hero_id)
-            
-            if hero_lh_avg is not None and hero_kills_avg is not None:
-                hero_stats = {
-                    'last_hits': {'average': round(hero_lh_avg, 2), 'median': round(hero_lh_median, 2)},
-                    'kills': {'average': round(hero_kills_avg, 2), 'median': round(hero_kills_median, 2)}
-                }
-        
-        return render_template('stats_section.html', 
-                             overall_stats=overall_stats,
-                             player_hero_stats=player_hero_stats,
-                             team_hero_stats=team_hero_stats,
-                             hero_stats=hero_stats,
-                             has_hero=hero_id is not None)
+        return render_template('heroes_select.html', heroes=heroes)
     except Exception as e:
-        return f'<div class="error">Error loading statistics: {str(e)}</div>'
+        return f'<option value="">Error loading heroes: {str(e)}</option>'
 
-# Keep existing API routes for backward compatibility
-@app.route('/api/leagues')
-def get_leagues():
-    try:
-        db = get_db()
-        leagues = db.get_all_leagues()
-        return jsonify({'success': True, 'data': leagues})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/leagues/most-recent')
-def get_most_recent_league():
-    try:
-        db = get_db()
-        league = db.get_most_recent_league()
-        if league:
-            return jsonify({'success': True, 'data': league})
-        else:
-            return jsonify({'success': False, 'error': 'No leagues found'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/teams/<int:league_id>')
-def get_teams(league_id):
-    try:
-        db = get_db()
-        # TODO: Get teams that participated in a specific league
-        teams = db.get_all_teams()
-        return jsonify({'success': True, 'data': teams})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-# Unused
-@app.route('/api/players')
-def get_all_players():
-    try:
-        db = get_db()
-        players = db.get_all_players()
-        return jsonify({'success': True, 'data': players})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/players/<int:team_id>')
-def get_players(team_id):
-    try:
-        db = get_db()
-        players = db.get_players_by_team(team_id)
-        return jsonify({'success': True, 'data': players})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/heroes')
-def get_heroes():
+# Route for getting all heroes (when no player selected)
+@app.route('/heroes')
+def get_all_heroes_html():
     try:
         db = get_db()
         heroes = db.get_all_heroes()
-        return jsonify({'success': True, 'data': heroes})
+        return render_template('heroes_select.html', heroes=heroes)
+    except Exception as e:
+        return f'<option value="">Error loading heroes: {str(e)}</option>'
+
+@app.route('/stats/context')
+def get_context_stats():
+    """Get statistics for a specific context (tournament, patch, all-time)"""
+    try:
+        context = request.args.get('context', 'tournament')
+        player_id = request.args.get('player_id', type=int)
+        hero_id = request.args.get('hero_id', type=int)
+        league_id = request.args.get('league_id', type=int)
+        
+        print(f"Context stats request: context={context}, player_id={player_id}, hero_id={hero_id}, league_id={league_id}")
+        
+        db = get_db()
+        stats_data = {}
+        
+        # Get current patch ID
+        current_patch_id = db.get_current_patch_id()
+        print(f"Current patch ID: {current_patch_id}")
+        
+        # Build filters based on context
+        if context == 'tournament' and league_id:
+            filters = {'league_id': league_id}
+        elif context == 'patch' and current_patch_id:
+            filters = {'patch_id': current_patch_id}
+        else:  # all-time
+            filters = {}
+        
+        print(f"Filters: {filters}")
+        
+        # Add player and hero filters
+        if player_id:
+            filters['player_id'] = player_id
+        if hero_id:
+            filters['hero_id'] = hero_id
+        
+        print(f"Final filters: {filters}")
+        
+        # Get comprehensive stats
+        if player_id and hero_id:
+            # Player + Hero stats (both player and hero filters)
+            player_hero_filters = filters.copy()
+            print(f"Player + Hero filters: {player_hero_filters}")
+            player_hero_lh = db.get_comprehensive_stats('last_hits_at_5', player_hero_filters)
+            player_hero_kills = db.get_comprehensive_stats('kills', player_hero_filters)
+            print(f"Player + Hero LH: {player_hero_lh}")
+            print(f"Player + Hero Kills: {player_hero_kills}")
+            if player_hero_lh and player_hero_kills:
+                stats_data['player_hero'] = {
+                    'last_hits': player_hero_lh,
+                    'kills': player_hero_kills
+                }
+        
+        if hero_id:
+            # Hero baseline stats (context + hero, but NOT player)
+            hero_filters = filters.copy()
+            if 'player_id' in hero_filters:
+                del hero_filters['player_id']  # Remove player filter for hero baseline
+            print(f"Hero baseline filters: {hero_filters}")
+            hero_lh = db.get_comprehensive_stats('last_hits_at_5', hero_filters)
+            hero_kills = db.get_comprehensive_stats('kills', hero_filters)
+            print(f"Hero baseline LH: {hero_lh}")
+            print(f"Hero baseline Kills: {hero_kills}")
+            if hero_lh and hero_kills:
+                stats_data['hero_baseline'] = {
+                    'last_hits': hero_lh,
+                    'kills': hero_kills
+                }
+        
+        if player_id:
+            # Player overall stats (context + player, but NOT hero)
+            player_filters = filters.copy()
+            if 'hero_id' in player_filters:
+                del player_filters['hero_id']  # Remove hero filter for player overall
+            print(f"Player overall filters: {player_filters}")
+            player_lh = db.get_comprehensive_stats('last_hits_at_5', player_filters)
+            player_kills = db.get_comprehensive_stats('kills', player_filters)
+            print(f"Player overall LH: {player_lh}")
+            print(f"Player overall Kills: {player_kills}")
+            if player_lh and player_kills:
+                stats_data['player_overall'] = {
+                    'last_hits': player_lh,
+                    'kills': player_kills
+                }
+        
+        return jsonify({
+            'success': True,
+            'context': context,
+            'data': stats_data
+        })
+        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/stats', methods=['POST'])
-def get_player_stats():
-    try:
-        data = request.get_json()
-        player_account_id = data.get('player_account_id')
-        team_id = data.get('team_id')
-        hero_id = data.get('hero_id')
-        
-        if not player_account_id:
-            return jsonify({'success': False, 'error': 'Player account ID is required'})
-        
-        db = get_db()
-        
-        # Get overall player stats (across all heroes) - Always available
-        overall_lh_avg, overall_lh_median = db.get_player_avg_and_median_lh(player_account_id, None)
-        overall_kills_avg, overall_kills_median = db.get_player_avg_and_median_kills(player_account_id, None)
-        
-        # Check if overall stats are available
-        if overall_lh_avg is not None and overall_kills_avg is not None:
-            stats = {
-                'overall_player_stats': {
-                    'last_hits': {'average': round(overall_lh_avg, 2), 'median': round(overall_lh_median, 2)},
-                    'kills': {'average': round(overall_kills_avg, 2), 'median': round(overall_kills_median, 2)}
-                }
-            }
-        else:
-            stats = {
-                'overall_player_message': 'No overall player statistics available'
-            }
-        
-        # Only show hero-specific stats if a hero is selected
-        if hero_id:
-            # Get player stats for this specific hero
-            player_lh_avg, player_lh_median = db.get_player_avg_and_median_lh(player_account_id, hero_id)
-            player_kills_avg, player_kills_median = db.get_player_avg_and_median_kills(player_account_id, hero_id)
-            
-            stats['player_hero_stats'] = {
-                'last_hits': {
-                    'average': round(player_lh_avg, 2),
-                    'median': round(player_lh_median, 2)
-                },
-                'kills': {
-                    'average': round(player_kills_avg, 2),
-                    'median': round(player_kills_median, 2)
-                }
-            }
-            
-            # If team_id is provided, get team stats for this hero
-            if team_id:
-                team_lh_avg, team_lh_median = db.get_team_avg_and_median_lh(team_id, hero_id)
-                team_kills_avg, team_kills_median = db.get_team_avg_and_median_kills(team_id, hero_id)
-                
-                if team_lh_avg is not None and team_kills_avg is not None:
-                    stats['team_hero_stats'] = {
-                        'last_hits': {'average': round(team_lh_avg, 2), 'median': round(team_lh_median, 2)},
-                        'kills': {'average': round(team_kills_avg, 2), 'median': round(team_kills_median, 2)}
-                    }
-                else:
-                    stats['team_hero_message'] = 'Team has not played this hero'
-            
-            # Get hero stats across all teams
-            hero_lh_avg, hero_lh_median = db.get_hero_avg_and_median_lh(hero_id)
-            hero_kills_avg, hero_kills_median = db.get_hero_avg_and_median_kills(hero_id)
-            
-            if hero_lh_avg is not None and hero_kills_avg is not None:
-                stats['hero_stats'] = {
-                    'last_hits': {'average': round(hero_lh_avg, 2), 'median': round(hero_lh_median, 2)},
-                    'kills': {'average': round(hero_kills_avg, 2), 'median': round(hero_kills_median, 2)}
-                }
-            else:
-                stats['hero_message'] = 'No data available for this hero'
-        else:
-            # No hero selected - show message
-            stats['hero_selection_message'] = 'Select a hero to see hero-specific statistics'
-        
-        return jsonify({'success': True, 'data': stats})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

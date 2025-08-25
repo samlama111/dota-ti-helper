@@ -1,0 +1,4 @@
+<option value="">Select a hero...</option>
+{% for hero in heroes %}
+<option value="{{ hero.hero_id }}">{{ hero.hero_name }}</option>
+{% endfor %}

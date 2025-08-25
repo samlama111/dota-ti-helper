@@ -1,122 +1,24 @@
-{% if overall_stats %}
-<!-- Player Overall Stats (Always shown when player is selected) -->
-<div class="stats-category secondary">
-    <h3>👤 Player Overall Statistics</h3>
-    <div class="stats-grid">
-        <div class="stat-card secondary">
-            <h4>Last Hits at 5 min</h4>
-            <div class="stat-value">{{ overall_stats.last_hits.average }}</div>
-            <div class="stat-label">Average</div>
-        </div>
-        <div class="stat-card secondary">
-            <h4>Last Hits at 5 min</h4>
-            <div class="stat-value">{{ overall_stats.last_hits.median }}</div>
-            <div class="stat-label">Median</div>
-        </div>
-        <div class="stat-card secondary">
-            <h4>Kills</h4>
-            <div class="stat-value">{{ overall_stats.kills.average }}</div>
-            <div class="stat-label">Average</div>
-        </div>
-        <div class="stat-card secondary">
-            <h4>Kills</h4>
-            <div class="stat-value">{{ overall_stats.kills.median }}</div>
-            <div class="stat-label">Median</div>
-        </div>
-    </div>
-</div>
-{% endif %}
+{% from 'macros.html' import context_selector, stats_table, loading_state, error_state %}
 
-{% if has_hero %}
+{% if overall_stats or player_hero_stats or hero_stats or team_hero_stats %}
+<div class="compact-stats-container">
+    {{ context_selector() }}
+    
+    <!-- Priority 1: Player + Hero Statistics (Primary Focus) -->
     {% if player_hero_stats %}
-    <!-- Player + Hero Stats (Only shown when hero is selected) -->
-    <div class="stats-category primary">
-        <h3>🎯 Player + Hero Statistics</h3>
-        <div class="stats-grid">
-            <div class="stat-card primary">
-                <h4>Last Hits at 5 min</h4>
-                <div class="stat-value">{{ player_hero_stats.last_hits.average }}</div>
-                <div class="stat-label">Average</div>
-            </div>
-            <div class="stat-card primary">
-                <h4>Last Hits at 5 min</h4>
-                <div class="stat-value">{{ player_hero_stats.last_hits.median }}</div>
-                <div class="stat-label">Median</div>
-            </div>
-            <div class="stat-card primary">
-                <h4>Kills</h4>
-                <div class="stat-value">{{ player_hero_stats.kills.average }}</div>
-                <div class="stat-label">Average</div>
-            </div>
-            <div class="stat-card primary">
-                <h4>Kills</h4>
-                <div class="stat-value">{{ player_hero_stats.kills.median }}</div>
-                <div class="stat-label">Median</div>
-            </div>
-        </div>
-    </div>
+        {{ stats_table(player_hero_stats, "🎯 Player + Hero Performance", "primary") }}
     {% endif %}
-
-    {% if team_hero_stats %}
-    <!-- Team + Hero Stats (Only shown when hero is selected) -->
-    <div class="stats-category tertiary">
-        <h3>🏆 Team + Hero Statistics</h3>
-        <div class="stats-grid">
-            <div class="stat-card tertiary">
-                <h4>Last Hits at 5 min</h4>
-                <div class="stat-value">{{ team_hero_stats.last_hits.average }}</div>
-                <div class="stat-label">Average</div>
-            </div>
-            <div class="stat-card tertiary">
-                <h4>Last Hits at 5 min</h4>
-                <div class="stat-value">{{ team_hero_stats.last_hits.median }}</div>
-                <div class="stat-label">Median</div>
-            </div>
-            <div class="stat-card tertiary">
-                <h4>Kills</h4>
-                <div class="stat-value">{{ team_hero_stats.kills.average }}</div>
-                <div class="stat-label">Average</div>
-            </div>
-            <div class="stat-card tertiary">
-                <h4>Kills</h4>
-                <div class="stat-value">{{ team_hero_stats.kills.median }}</div>
-                <div class="stat-label">Median</div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
+    
+    <!-- Priority 2: Hero Statistics (Secondary Focus) -->
     {% if hero_stats %}
-    <!-- Hero Stats (Only shown when hero is selected) -->
-    <div class="stats-category quaternary">
-        <h3>⚔️ Hero Statistics (All Teams)</h3>
-        <div class="stats-grid">
-            <div class="stat-card quaternary">
-                <h4>Last Hits at 5 min</h4>
-                <div class="stat-value">{{ hero_stats.last_hits.average }}</div>
-                <div class="stat-label">Average</div>
-            </div>
-            <div class="stat-card quaternary">
-                <h4>Last Hits at 5 min</h4>
-                <div class="stat-value">{{ hero_stats.last_hits.median }}</div>
-                <div class="stat-label">Median</div>
-            </div>
-            <div class="stat-card quaternary">
-                <h4>Kills</h4>
-                <div class="stat-value">{{ hero_stats.kills.average }}</div>
-                <div class="stat-label">Average</div>
-            </div>
-            <div class="stat-card quaternary">
-                <h4>Kills</h4>
-                <div class="stat-value">{{ hero_stats.kills.median }}</div>
-                <div class="stat-label">Median</div>
-            </div>
-        </div>
-    </div>
+        {{ stats_table(hero_stats, "⚔️ Hero Baseline", "secondary") }}
     {% endif %}
-{% else %}
-<!-- Hero selection message -->
-<div class="data-message">
-    <p>Select a hero to see hero-specific statistics</p>
+    
+    <!-- Priority 3: Player Overall Statistics (Tertiary Focus) -->
+    {% if overall_stats %}
+        {{ stats_table(overall_stats, "👤 Player Overall", "tertiary") }}
+    {% endif %}
 </div>
+{% else %}
+    {{ error_state("Select a player and hero to see comprehensive statistics") }}
 {% endif %}

@@ -4,530 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dota TI Helper - Player Statistics</title>
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .content {
-            padding: 40px;
-        }
-
-        .selection-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
-
-        .selection-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e1e5e9;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .selection-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .selection-card h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .selection-card h3::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            border-radius: 2px;
-        }
-
-        select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 1rem;
-            background: white;
-            color: #2c3e50;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: #ff6b35;
-        }
-
-        select:disabled {
-            background: #f8f9fa;
-            color: #6c757d;
-            cursor: not-allowed;
-        }
-
-        .stats-section {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e1e5e9;
-            margin-top: 30px;
-        }
-
-        .stats-category {
-            margin-bottom: 30px;
-        }
-
-        .stats-category.primary h3 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            border-bottom: 3px solid #ff6b35;
-            padding-bottom: 10px;
-        }
-
-        .stats-category.secondary h3 {
-            color: #34495e;
-            font-size: 1.6rem;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 8px;
-        }
-
-        .stats-category.tertiary h3 {
-            color: #7f8c8d;
-            font-size: 1.4rem;
-            border-bottom: 2px solid #f39c12;
-            padding-bottom: 6px;
-        }
-
-        .stats-category.quaternary h3 {
-            color: #95a5a6;
-            font-size: 1.3rem;
-            border-bottom: 1px solid #9b59b6;
-            padding-bottom: 5px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .stat-card {
-            padding: 25px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-        }
-
-        .stat-card.primary {
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            color: white;
-        }
-
-        .stat-card.secondary {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white;
-        }
-
-        .stat-card.tertiary {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            color: white;
-        }
-
-        .stat-card.quaternary {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-            color: white;
-        }
-
-        .stat-card h4 {
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            opacity: 0.9;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-
-        .data-message {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e9ecef;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            text-align: center;
-        }
-
-        .data-message p {
-            color: #6c757d;
-            margin: 0;
-            font-style: italic;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #6c757d;
-        }
-
-
-
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            border: 1px solid #f5c6cb;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .content {
-                padding: 20px;
-            }
-            
-            .selection-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
 <body>
+    {% from 'macros.html' import page_header, selection_card, context_selector %}
+    
     <div class="container">
-        <div class="header">
-            <h1>🏆 Dota TI Helper</h1>
-            <p>Analyze player performance statistics across leagues, teams, and heroes</p>
-        </div>
-
+        {{ page_header("Dota TI Helper", "Player Statistics & Analysis") }}
+        
         <div class="content">
+            <!-- Selection Grid -->
             <div class="selection-grid">
-                <div class="selection-card">
-                    <h3>📊 League</h3>
-                    <select id="leagueSelect" 
-                            onchange="onLeagueChange()">
-                        <option value="">Select a league...</option>
-                        {% for league in leagues %}
-                        <option value="{{ league.league_id }}" {% if league.is_default %}selected{% endif %}>{{ league.league_name }} ({{ league.tier }})</option>
-                        {% endfor %}
+                {{ selection_card(
+                    title="League",
+                    icon="🏆",
+                    id="leagueSelect",
+                    name="league_id",
+                    options=leagues,
+                    placeholder="Select a league...",
+                    disabled=false
+                ) }}
+                
+                {{ selection_card(
+                    title="Team",
+                    icon="👥",
+                    id="teamSelect",
+                    name="team_id",
+                    options=[],
+                    placeholder="Select a team...",
+                    disabled=true
+                ) }}
+                
+                {{ selection_card(
+                    title="Player",
+                    icon="👤",
+                    id="playerSelect",
+                    name="player_id",
+                    options=[],
+                    placeholder="Select a player...",
+                    disabled=true
+                ) }}
+                
+                {{ selection_card(
+                    title="Hero",
+                    icon="⚔️",
+                    id="heroSelect",
+                    name="hero_id",
+                    options=heroes,
+                    placeholder="Select a hero...",
+                    disabled=true
+                ) }}
+            </div>
+
+            <!-- Advanced Mode Toggle -->
+            <div class="advanced-mode-toggle">
+                <button id="toggleAdvancedMode" class="toggle-btn">
+                    🔧 Toggle Advanced Analysis Mode
+                </button>
+            </div>
+
+            <!-- Advanced Selection Grid (Hidden by default) -->
+            <div id="advancedSelectionGrid" class="advanced-selection-grid hidden">
+                <div class="advanced-selection-card">
+                    <h3>🤝 Friendly Hero</h3>
+                    <select id="friendlyHeroSelect" disabled>
+                        <option value="">Select friendly hero...</option>
                     </select>
                 </div>
-
-                <div class="selection-card">
-                    <h3>👥 Team</h3>
-                    <select id="teamSelect" 
-                            onchange="onTeamChange()"
-                            disabled>
-                        <option value="">Select a team...</option>
+                
+                <div class="advanced-selection-card">
+                    <h3>⚔️ Enemy Hero 1</h3>
+                    <select id="enemyHero1Select" disabled>
+                        <option value="">Select enemy hero...</option>
                     </select>
                 </div>
-
-                <div class="selection-card">
-                    <h3>🎮 Player</h3>
-                    <select id="playerSelect" 
-                            onchange="onPlayerChange()"
-                            disabled>
-                        <option value="">Select a player...</option>
+                
+                <div class="advanced-selection-card">
+                    <h3>⚔️ Enemy Hero 2</h3>
+                    <select id="enemyHero2Select" disabled>
+                        <option value="">Select enemy hero...</option>
                     </select>
                 </div>
-
-                <div class="selection-card">
-                    <h3>⚔️ Hero</h3>
-                    <select id="heroSelect" 
-                            onchange="onHeroChange()"
-                            disabled>
-                        <option value="">Select a hero...</option>
-                        {% for hero in heroes %}
-                        <option value="{{ hero.hero_id }}">{{ hero.hero_name }}</option>
-                        {% endfor %}
+                
+                <div class="advanced-selection-card">
+                    <h3>🎯 Side</h3>
+                    <select id="sideSelect" disabled>
+                        <option value="">Select side...</option>
+                        <option value="radiant">Radiant</option>
+                        <option value="dire">Dire</option>
                     </select>
                 </div>
             </div>
 
+            <!-- Mode Instructions -->
+            <div id="modeInstructions" class="mode-instructions hidden">
+                <p><strong>Advanced Mode:</strong> Select a hero and additional parameters for detailed lane matchup analysis.</p>
+            </div>
+
+            <!-- Stats Section -->
             <div id="statsSection" class="stats-section hidden">
-                <!-- Stats will be loaded here via HTMX -->
+                <div id="statsContent">
+                    <!-- Stats will be loaded here dynamically -->
+                </div>
             </div>
-
-
         </div>
     </div>
 
-    <script>
-        // JavaScript for HTMX integration
-        let selectedPlayerId = null;
-        let selectedTeamId = null;
-
-        async function onLeagueChange() {
-            const leagueId = document.getElementById('leagueSelect').value;
-            console.log('League changed to:', leagueId);
-            
-            if (leagueId) {
-                await loadTeams(leagueId);
-                // Don't call resetTeamAndPlayer here, just reset the downstream selects
-                const playerSelect = document.getElementById('playerSelect');
-                const heroSelect = document.getElementById('heroSelect');
-                
-                playerSelect.innerHTML = '<option value="">Select a player...</option>';
-                playerSelect.disabled = true;
-                heroSelect.disabled = true;
-                
-                selectedTeamId = null;
-                selectedPlayerId = null;
-                
-                document.getElementById('statsSection').classList.add('hidden');
-            } else {
-                // If no league selected, disable all downstream selects
-                const teamSelect = document.getElementById('teamSelect');
-                const playerSelect = document.getElementById('playerSelect');
-                const heroSelect = document.getElementById('heroSelect');
-                
-                teamSelect.innerHTML = '<option value="">Select a team...</option>';
-                teamSelect.disabled = true;
-                playerSelect.innerHTML = '<option value="">Select a player...</option>';
-                playerSelect.disabled = true;
-                heroSelect.disabled = true;
-                
-                selectedTeamId = null;
-                selectedPlayerId = null;
-                
-                document.getElementById('statsSection').classList.add('hidden');
-            }
-        }
-
-        async function onTeamChange() {
-            const teamId = document.getElementById('teamSelect').value;
-            selectedTeamId = teamId;
-            console.log('Team changed to:', teamId);
-            
-            if (teamId) {
-                await loadPlayers(teamId);
-                // Don't call resetPlayer here, just enable the player select
-                const playerSelect = document.getElementById('playerSelect');
-                playerSelect.disabled = false;
-                console.log('Player select enabled');
-            } else {
-                // If no team selected, disable player and hero selects
-                const playerSelect = document.getElementById('playerSelect');
-                const heroSelect = document.getElementById('heroSelect');
-                
-                playerSelect.innerHTML = '<option value="">Select a player...</option>';
-                playerSelect.disabled = true;
-                heroSelect.disabled = true;
-                
-                selectedPlayerId = null;
-                
-                document.getElementById('statsSection').classList.add('hidden');
-            }
-        }
-
-        async function loadTeams(leagueId) {
-            try {
-                console.log('Loading teams for league:', leagueId);
-                const teamSelect = document.getElementById('teamSelect');
-                teamSelect.innerHTML = '<option value="">Loading teams...</option>';
-                teamSelect.disabled = true;
-                
-                const response = await fetch(`/teams/${leagueId}`);
-                const html = await response.text();
-                console.log('Teams HTML response:', html);
-                teamSelect.innerHTML = html;
-                teamSelect.disabled = false;
-                console.log('Team select enabled:', teamSelect.disabled);
-            } catch (error) {
-                console.error('Error loading teams:', error);
-                document.getElementById('teamSelect').innerHTML = '<option value="">Error loading teams</option>';
-            }
-        }
-
-        async function loadPlayers(teamId) {
-            try {
-                console.log('Loading players for team:', teamId);
-                const playerSelect = document.getElementById('playerSelect');
-                playerSelect.innerHTML = '<option value="">Loading players...</option>';
-                playerSelect.disabled = true;
-                
-                const response = await fetch(`/players/${teamId}`);
-                const html = await response.text();
-                console.log('Players HTML response:', html);
-                playerSelect.innerHTML = html;
-                playerSelect.disabled = false;
-                console.log('Player select enabled after loading:', playerSelect.disabled);
-            } catch (error) {
-                console.error('Error loading players:', error);
-                document.getElementById('playerSelect').innerHTML = '<option value="">Error loading players</option>';
-            }
-        }
-
-        async function loadStats() {
-            if (!selectedPlayerId) return;
-
-            const teamId = selectedTeamId;
-            const heroId = document.getElementById('heroSelect').value;
-            
-            try {
-                const statsSection = document.getElementById('statsSection');
-                statsSection.innerHTML = '<div class="loading">Loading statistics...</div>';
-                statsSection.classList.remove('hidden');
-                
-                let url = `/stats/${selectedPlayerId}`;
-                const params = new URLSearchParams();
-                
-                if (teamId) {
-                    params.append('team_id', teamId);
-                }
-                if (heroId) {
-                    params.append('hero_id', heroId);
-                }
-                
-                if (params.toString()) {
-                    url += '?' + params.toString();
-                }
-                
-                const response = await fetch(url);
-                const html = await response.text();
-                statsSection.innerHTML = html;
-            } catch (error) {
-                console.error('Error loading stats:', error);
-                statsSection.innerHTML = '<div class="error">Error loading statistics</div>';
-            }
-        }
-
-        function resetTeamAndPlayer() {
-            const teamSelect = document.getElementById('teamSelect');
-            const playerSelect = document.getElementById('playerSelect');
-            const heroSelect = document.getElementById('heroSelect');
-            
-            console.log('Resetting team and player, league value:', document.getElementById('leagueSelect').value);
-            
-            // Reset team select but keep it enabled if we have a league
-            teamSelect.innerHTML = '<option value="">Select a team...</option>';
-            if (document.getElementById('leagueSelect').value) {
-                teamSelect.disabled = false;
-                console.log('Team select enabled after reset');
-            } else {
-                teamSelect.disabled = true;
-                console.log('Team select disabled after reset');
-            }
-            selectedTeamId = null;
-            
-            resetPlayer();
-        }
-
-        function resetPlayer() {
-            const playerSelect = document.getElementById('playerSelect');
-            const heroSelect = document.getElementById('heroSelect');
-            
-            playerSelect.innerHTML = '<option value="">Select a player...</option>';
-            playerSelect.disabled = true;
-            heroSelect.disabled = true;
-            selectedPlayerId = null;
-            
-            document.getElementById('statsSection').classList.add('hidden');
-        }
-
-        function onPlayerChange() {
-            const playerSelect = document.getElementById('playerSelect');
-            const heroSelect = document.getElementById('heroSelect');
-            
-            console.log('Player changed to:', playerSelect.value);
-            
-            if (playerSelect.value) {
-                selectedPlayerId = playerSelect.value;
-                heroSelect.disabled = false;
-                console.log('Hero select enabled');
-                loadStats();
-            } else {
-                selectedPlayerId = null;
-                heroSelect.disabled = true;
-                document.getElementById('statsSection').classList.add('hidden');
-            }
-        }
-
-        function onHeroChange() {
-            if (selectedPlayerId) {
-                loadStats();
-            }
-        }
-
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, checking for default league');
-            // Auto-load teams if default league is selected
-            const leagueSelect = document.getElementById('leagueSelect');
-            if (leagueSelect.value) {
-                console.log('Default league found, loading teams');
-                onLeagueChange();
-            } else {
-                console.log('No default league selected');
-            }
-        });
-    </script>
+    <!-- External JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
