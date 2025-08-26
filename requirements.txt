@@ -1,5 +1,12 @@
 numpy
+python-dotenv
+# For web app + API
 requests
 supabase
-python-dotenv
 flask
+# For ML
+jupyter
+polars[pandas]
+matplotlib
+catboost
+scikit-learn
