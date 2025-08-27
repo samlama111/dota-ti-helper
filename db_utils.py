@@ -53,16 +53,25 @@ class SQLiteDB(BaseDB):
             hero_id INTEGER,
             kills INTEGER,
             last_hits_at_5 INTEGER,
+            denies_at_5 INTEGER,
             heroes_on_lane TEXT,
             enemy_heroes_on_lane TEXT,
+            assumed_lane_role INTEGER,
+            is_roaming BOOLEAN,
             is_radiant BOOLEAN,
+            patch_id INTEGER,
             PRIMARY KEY (match_id, player_account_id)
         )
         """)
+        # TODO: Add roles
         self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS hero_info (
             hero_id INTEGER PRIMARY KEY,
-            hero_name TEXT
+            hero_name TEXT,
+            attack_type TEXT,
+            primary_attribute TEXT,
+            base_attack_min INTEGER,
+            base_attack_max INTEGER
         )
         """)
         self.cursor.execute("""
@@ -89,13 +98,13 @@ class SQLiteDB(BaseDB):
         """)
         self.commit()
 
-    def insert_hero_data(self, hero_id, hero_name):
+    def insert_hero_data(self, hero_id, hero_name, attack_type, primary_attribute, base_attack_min, base_attack_max):
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO hero_info (hero_id, hero_name)
-        VALUES (?, ?)
+        INSERT OR REPLACE INTO hero_info (hero_id, hero_name, attack_type, primary_attribute, base_attack_min, base_attack_max)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-            (hero_id, hero_name),
+            (hero_id, hero_name, attack_type, primary_attribute, base_attack_min, base_attack_max),
         )
         self.commit()
 
@@ -137,9 +146,13 @@ class SQLiteDB(BaseDB):
         hero_id,
         kills,
         last_hits_at_5,
+        denies_at_5,
         heroes_on_lane,
         enemy_heroes_on_lane,
+        assumed_lane_role,
+        is_roaming,
         is_radiant,
+        patch_id,
     ):
         lane_heroes = []
         for hero in heroes_on_lane:
@@ -148,7 +161,6 @@ class SQLiteDB(BaseDB):
             )
             lane_heroes.append(self.cursor.fetchone()[0])
         heroes_on_lane_str = ", ".join(lane_heroes)
-        # print(f"Heroes on lane: {heroes_on_lane_str}")
 
         enemy_lane_heroes = []
         for hero in enemy_heroes_on_lane:
@@ -157,12 +169,11 @@ class SQLiteDB(BaseDB):
             )
             enemy_lane_heroes.append(self.cursor.fetchone()[0])
         enemy_heroes_on_lane_str = ", ".join(enemy_lane_heroes)
-        # print(f"Enemy heroes on lane: {enemy_heroes_on_lane_str}")
 
         self.cursor.execute(
             """
-        INSERT OR REPLACE INTO match_info (league_id, match_id, player_account_id, hero_id, kills, last_hits_at_5, heroes_on_lane, enemy_heroes_on_lane, is_radiant)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO match_info (league_id, match_id, player_account_id, hero_id, kills, last_hits_at_5, denies_at_5, heroes_on_lane, enemy_heroes_on_lane, assumed_lane_role, is_roaming, is_radiant, patch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             (
                 league_id,
@@ -171,9 +182,13 @@ class SQLiteDB(BaseDB):
                 hero_id,
                 kills,
                 last_hits_at_5,
+                denies_at_5,
                 heroes_on_lane_str,
                 enemy_heroes_on_lane_str,
+                assumed_lane_role,
+                is_roaming,
                 is_radiant,
+                patch_id,
             ),
         )
         self.commit()

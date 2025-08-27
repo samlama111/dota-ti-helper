@@ -33,9 +33,8 @@ league_id_kv: dict[str, int | None] = {
 
 
 def main():
-    # file_path_prefix = "old_data/"
     file_path_prefix = "new_data/"
-    file_path = file_path_prefix + "dota_2_data_2025_08_25.db"
+    file_path = file_path_prefix + "dota_2_data_2025_08_27.db"
     db = SQLiteDB(file_path)
     # db = PostgresDB(supabase_url=os.getenv("SUPABASE_URL"), supabase_key=os.getenv("SUPABASE_KEY"))
     try:
