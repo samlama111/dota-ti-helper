@@ -10,3 +10,4 @@ polars[pandas]
 matplotlib
 catboost
 scikit-learn
+peewee
