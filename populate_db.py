@@ -3,11 +3,12 @@ from dotenv import load_dotenv
 from insert import insert_all_league_matches
 from db.db_connection import db
 from db.db_models import Hero, League, Team, Player, Match
-from db.db_utils import insert_heroes, get_latest_match_id_in_db
+from db.db_utils import insert_heroes
 
 load_dotenv()
 
 league_id_kv: dict[str, int | None] = {
+    "blast_slam_4_2025": 17419,
     "ti_2025": 18324,
     "fissure_universe_6_2025": 18433,
     "clavision_masters_2025": 18359,
@@ -33,20 +34,10 @@ league_id_kv: dict[str, int | None] = {
 
 def main():
     try:
-        # Create the database and tables
         db.connect()
         db.create_tables([Hero, League, Team, Player, Match])
-
-        # Get the highest match_id from the database to determine what's already processed
-        latest_match_id_in_db = get_latest_match_id_in_db()
-        print(f"Latest match_id in db: {latest_match_id_in_db}")
-
-        # If no matches exist yet, insert hero data
-        if latest_match_id_in_db == 0:
-            insert_heroes()
-
-        insert_all_league_matches(latest_match_id_in_db, league_id_kv)
-
+        insert_heroes()
+        insert_all_league_matches(league_id_kv)
     except Exception as e:
         print(e)
     finally:

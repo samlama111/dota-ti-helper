@@ -1,20 +1,24 @@
 import time
+
 from db.db_utils import (
     create_and_insert_match_data,
     insert_teams_and_their_players,
     insert_league_info,
+    get_all_league_matches,
 )
-from opendota_api import get_all_league_matches, get_match
+from opendota_api import get_league_matches, get_match
 
 
-def _get_missing_matches(latest_match_id_in_db: int, league_id: int) -> list[int]:
-    league_matches = get_all_league_matches(league_id)
-    return [m for m in league_matches if m["match_id"] > latest_match_id_in_db]
+def _get_missing_matches(league_id: int) -> list[int]:
+    fetched_league_matches = get_league_matches(league_id)
+    existing_matches = get_all_league_matches(league_id)
+    existing_matches_ids = [m.match_id for m in existing_matches]
+    return [
+        m for m in fetched_league_matches if m["match_id"] not in existing_matches_ids
+    ]
 
 
-def insert_all_league_matches(
-    latest_match_id_in_db: int, league_id_kv: dict[str, int | None]
-):
+def insert_all_league_matches(league_id_kv: dict[str, int | None]):
     # Process all leagues, but skip matches that are already in the database
     for current_league_name, current_league_id in league_id_kv.items():
         if current_league_id is None:
@@ -23,7 +27,7 @@ def insert_all_league_matches(
         print(f"Processing league {current_league_name}")
 
         # Check if we need to process this league at all
-        new_matches = _get_missing_matches(latest_match_id_in_db, current_league_id)
+        new_matches = _get_missing_matches(current_league_id)
 
         if not new_matches:
             print(f"No new matches for {current_league_name}")

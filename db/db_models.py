@@ -48,9 +48,13 @@ class Team(BaseModel):
 
 
 class Player(BaseModel):
-    player_account_id = IntegerField(primary_key=True)
+    player_account_id = IntegerField()
     player_name = CharField()
     player_team_id = IntegerField()
+    is_active = BooleanField()
+
+    class Meta:
+        primary_key = CompositeKey("player_account_id", "player_team_id")
 
 
 class Match(BaseModel):

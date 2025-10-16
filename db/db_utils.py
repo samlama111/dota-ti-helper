@@ -5,7 +5,7 @@ from opendota_api import (
     get_league_teams,
     get_team_players,
     get_league_info,
-    get_all_league_matches,
+    get_league_matches,
     get_match,
 )
 from db.db_models import Hero, Team, Player, League, Match
@@ -16,10 +16,14 @@ def _get_hero_name(hero_id: int) -> str:
     return Hero.select(Hero.hero_name).where(Hero.hero_id == hero_id).scalar()
 
 
+def get_all_heroes():
+    return Hero.select(Hero.hero_id, Hero.hero_name)
+
+
 def insert_heroes():
     hero_dict = get_hero_stats()
     for hero in hero_dict:
-        Hero.create(
+        Hero.get_or_create(
             hero_id=hero["id"],
             hero_name=hero["localized_name"],
             attack_type=hero["attack_type"],
@@ -30,39 +34,55 @@ def insert_heroes():
 
 
 ## Players and teams
-def _get_active_players(players):
-    return [player for player in players if player["is_current_team_member"]]
-
-
-def _get_fallback_name(player):
-    player_name = player["name"] if player["name"] else player["personaname"]
-    fallback_name = player_name if player_name else "Saksa, or someone else idk"
-    return fallback_name
-
-
 def insert_teams_and_their_players(league_id):
     teams = get_league_teams(league_id)
     for team in teams:
-        Team.create(
-            team_id=team["team_id"],
-            team_name=team["name"],
-            rating=team["rating"],
+        team_exists = (
+            Team.select(Team.team_id).where(Team.team_id == team["team_id"]).scalar()
         )
+        if team_exists:
+            # Update team rating
+            Team.update(rating=team["rating"]).where(
+                Team.team_id == team["team_id"]
+            ).execute()
+            continue
+        else:
+            Team.create(
+                team_id=team["team_id"],
+                team_name=team["name"],
+                rating=team["rating"],
+            )
         players = get_team_players(team["team_id"])
 
-        active_players = _get_active_players(players)
-        for player in active_players:
-            fallback_name = _get_fallback_name(player)
-            Player.create(
+        for player in players:
+            if not player.get("name"):
+                continue
+            Player.get_or_create(
                 player_account_id=player["account_id"],
-                player_name=fallback_name,
+                player_name=player.get("name"),
                 player_team_id=team["team_id"],
+                is_active=player["is_current_team_member"],
             )
+
+
+def get_all_players():
+    return Player.select()
+
+
+def get_active_players_by_team(team_id: int):
+    return Player.select(Player.player_account_id, Player.player_name).where(
+        Player.player_team_id == team_id,
+        Player.is_active == True,
+    )
+
+
+def get_all_teams():
+    return Team.select(Team.team_id, Team.team_name, Team.rating)
 
 
 ## Leagues
 def _get_league_patch_id(league_id: int) -> int:
-    league_matches = get_all_league_matches(league_id)
+    league_matches = get_league_matches(league_id)
     first_match_info = league_matches[0]
     first_match_id = first_match_info["match_id"]
     first_match = get_match(first_match_id)
@@ -85,10 +105,13 @@ def insert_league_info(league_id: int, league_name: str):
         print(f"Inserted league info for {league_name}")
 
 
+def get_all_leagues():
+    return League.select()
+
+
 # Matches
-def get_latest_match_id_in_db() -> int:
-    query = Match.select(fn.MAX(Match.match_id))
-    return query.scalar() or 0
+def get_all_league_matches(league_id: int) -> list[int]:
+    return Match.select(Match.match_id).where(Match.league_id == league_id)
 
 
 def _determine_lane_role(player: dict, match: dict) -> float:
@@ -166,7 +189,7 @@ def _adjust_lane_role_for_support(player_data: dict, lane_context: dict) -> floa
     if is_teammate_roaming:
         return lane_role
 
-    # Apply the original complex logic
+    # Change to support if lower number of last hits
     if teammate_lh_at_5 >= last_hits_at_5:
         if lane_role == 1:  # Safelane
             return 5  # Pos 5 support
@@ -255,3 +278,31 @@ def create_and_insert_match_data(match: dict, league_id: int):
         except Exception as e:
             print(f"Error processing player {player.get('name', 'unknown')}: {e}")
             continue
+
+
+def get_relevant_matches(
+    player_id: int | None = None,
+    hero_id: int | None = None,
+    ally_hero_name: str | None = None,
+    opponent_hero_name: str | None = None,
+    # team_id: int = None,
+    lane_role: int | None = None,
+    patch_id: int | None = None,
+    league_id: int | None = None,
+):
+    query = Match.select()
+    if player_id is not None:
+        query = query.where(Match.player_account_id == player_id)
+    if hero_id is not None:
+        query = query.where(Match.hero_id == hero_id)
+    if lane_role is not None:
+        query = query.where(Match.assumed_lane_role == lane_role)
+    if patch_id is not None:
+        query = query.where(Match.patch_id == patch_id)
+    if league_id is not None:
+        query = query.where(Match.league_id == league_id)
+    if opponent_hero_name is not None:
+        query = query.where(Match.enemy_heroes_on_lane.contains(opponent_hero_name))
+    if ally_hero_name is not None:
+        query = query.where(Match.heroes_on_lane.contains(ally_hero_name))
+    return query.execute()
