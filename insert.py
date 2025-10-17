@@ -6,7 +6,8 @@ from db.db_utils import (
     insert_league_info,
     get_all_league_matches,
 )
-from dota_api.opendota_api import get_league_matches, get_match
+from db_cache.db_utils import get_or_fetch_match
+from dota_api.opendota_api import get_league_matches
 
 
 def _get_missing_matches(league_id: int) -> list[int]:
@@ -44,7 +45,7 @@ def insert_all_league_matches(league_id_kv: dict[str, int | None]):
 
         # Process only the new matches
         for match in new_matches:
-            match_info = get_match(match["match_id"])
+            match_info = get_or_fetch_match(match["match_id"])
             create_and_insert_match_data(match_info, current_league_id)
             # Time out for 5s, to avoid getting rate limited
             time.sleep(5)

@@ -1,7 +1,9 @@
 from insert import insert_all_league_matches
 from db.db_connection import db
-from db.db_models import Hero, League, Team, Player, Match
 from db.db_utils import insert_heroes
+from db.models import Hero, League, Team, Player, Match
+from db_cache.models import ApiCache
+from db_cache.db_connection import db as db_cache_db
 
 
 league_id_kv: dict[str, int | None] = {
@@ -33,6 +35,7 @@ def main():
     try:
         db.connect()
         db.create_tables([Hero, League, Team, Player, Match])
+        db_cache_db.create_tables([ApiCache])  # Create ApiCache table in db_cache
         insert_heroes()
         insert_all_league_matches(league_id_kv)
     except Exception as e:

@@ -6,9 +6,9 @@ from dota_api.opendota_api import (
     get_team_players,
     get_league_info,
     get_league_matches,
-    get_match,
 )
-from db.db_models import Hero, Team, Player, League, Match
+from db.models import Hero, Team, Player, League, Match
+from db_cache.db_utils import get_or_fetch_match
 
 
 ## Heroes
@@ -85,7 +85,7 @@ def _get_league_patch_id(league_id: int) -> int:
     league_matches = get_league_matches(league_id)
     first_match_info = league_matches[0]
     first_match_id = first_match_info["match_id"]
-    first_match = get_match(first_match_id)
+    first_match = get_or_fetch_match(first_match_id)
     return first_match["patch"]
 
 
