@@ -1,11 +1,8 @@
-from dotenv import load_dotenv
-
 from insert import insert_all_league_matches
 from db.db_connection import db
 from db.db_models import Hero, League, Team, Player, Match
 from db.db_utils import insert_heroes
 
-load_dotenv()
 
 league_id_kv: dict[str, int | None] = {
     "blast_slam_4_2025": 17419,

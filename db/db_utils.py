@@ -1,6 +1,6 @@
 from peewee import fn
 
-from opendota_api import (
+from dota_api.opendota_api import (
     get_hero_stats,
     get_league_teams,
     get_team_players,

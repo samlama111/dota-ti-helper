@@ -6,7 +6,7 @@ from db.db_utils import (
     insert_league_info,
     get_all_league_matches,
 )
-from opendota_api import get_league_matches, get_match
+from dota_api.opendota_api import get_league_matches, get_match
 
 
 def _get_missing_matches(league_id: int) -> list[int]:
